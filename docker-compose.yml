@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  openclaw:
+    build: .
+    container_name: openclaw_agent
+    restart: unless-stopped
+    depends_on:
+      - vault
+    ports:
+      - "3000:3000"
+    environment:
+      - OPENCLAW_ENV=production
+      - OPENCLAW_HOST=0.0.0.0
+      - VAULT_ADDR=http://vault:8200
+      - OPENCLAW_CONFIG=/app/config/policies.yaml
+      - ANTHROPIC_API_KEY=sk-ant-dummy-key-to-bypass-check
+      # VAULT_TOKEN is expected to be passed from the host environment
+      - VAULT_TOKEN=${VAULT_TOKEN}
+    volumes:
+      - ./workspace:/app/workspace
+      - ./skills:/app/skills
+      - ./config:/app/config
+      - ./openclaw_data:/home/openclawuser/.openclaw
+    shm_size: "1gb"
+    security_opt:
+      - seccomp=unconfined
+    read_only: false
+    cap_add:
+      - SYS_ADMIN
+    cap_drop:
+      - ALL
+
+  vault:
+    image: hashicorp/vault:latest
+    container_name: openclaw_vault
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8200:8200"
+    volumes:
+      - ./vault/config:/vault/config
+      - ./vault/file:/vault/file
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:8200
+    entrypoint: vault server -config=/vault/config/vault.json

@@ -1,0 +1,87 @@
+# OpenClaw Security & Plugin Policies
+# These policies enforce the user's strict security requirements.
+
+agents:
+  defaults:
+    model: google/gemini-2.5-flash
+    provider: google
+  main:
+    model: google/gemini-2.5-flash
+    provider: google
+
+models:
+  default: google/gemini-2.5-flash
+  providers:
+    google:
+      models:
+        - id: gemini-2.5-flash
+
+security:
+  # General Execution
+  allow_root: false
+  restrict_to_localhost: true
+  
+  # Human-In-The-Loop (HITL) Triggers
+  hitl:
+    file_deletion: true
+    system_commands: true
+    external_api_modifications: true # Require approval for POST/PUT/DELETE requests
+    git_push: true
+  
+  # Network & Browser Automation
+  network:
+    allowed_domains:
+      - "*.atlassian.net"
+      - "graph.microsoft.com"
+      - "login.microsoftonline.com"
+      - "login.live.com"
+      - "*.microsoftonline.com"
+      - "*.microsoft.com"
+      - "*.live.com"
+      - "*.office.com"
+      - "*.office.net"
+      - "*.msauth.net"
+      - "*.msftauth.net"
+      - "teams.live.com"
+      - "teams.microsoft.com"
+      - "*.teams.microsoft.com"
+      - "*.skype.com"
+      - "dev.azure.com"
+      - "*.visualstudio.com"
+      - "figma.com"
+      - "www.figma.com"
+      - "api.figma.com"
+      - "management.azure.com"
+      - "api.telegram.org"
+      - "reddit.com"
+      - "voz.vn"
+      - "x.com"
+      - "twitter.com"
+    block_local_network_access: false # Prevent SSRF attacks
+
+plugins:
+  # Skill / Plugin Policy
+  allow_unsigned_skills: false
+  trusted_skills_dir: "/app/skills"
+  
+  # Tool Restrictions
+  tools:
+    shell_command:
+      blocked_commands:
+        - "rm -rf /"
+        - "mkfs"
+        - "chmod -R 777"
+        - "chown -R"
+        - "sudo"
+        - "su"
+        - "env"
+        - "printenv"
+        - "export"
+        - "echo $OPENAI_API_KEY"
+        - "echo $ANTHROPIC_API_KEY"
+      max_execution_time_seconds: 60
+
+    browser_automation:
+      sandbox: true
+      disable_javascript: false
+      block_ads: true

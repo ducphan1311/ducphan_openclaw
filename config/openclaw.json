@@ -1,0 +1,23 @@
+{
+  "agents": {
+    "defaults": {
+      "model": "google/gemini-2.5-flash",
+      "provider": "google"
+    },
+    "main": {
+      "model": "google/gemini-2.5-flash",
+      "provider": "google"
+    }
+  },
+  "models": {
+    "default": "google/gemini-2.5-flash"
+  },
+  "commands": {
+    "restart": true
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true
+    }
+  }
+}
