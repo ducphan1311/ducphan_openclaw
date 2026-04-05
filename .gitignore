@@ -1,6 +1,9 @@
 .env
 .env.*
 !.env.example
+openclaw_data/
+*.bak
+*.bak.*
 node_modules/
 workspace/
 logs/
