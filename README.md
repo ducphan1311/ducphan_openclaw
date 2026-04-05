@@ -1,72 +1,159 @@
 # OpenClaw Personal Assistant System
 
-A production-ready, autonomous multi-agent system powered by the **OpenClaw framework**. This system acts as a proactive personal AI assistant designed specifically for a Flutter/Native developer working with Azure, Microsoft Teams, and Jira.
+Hệ thống multi-agent chạy trên OpenClaw, tích hợp Jira, Azure DevOps, Teams, Figma và Telegram.
 
-## 🏗 Architecture
+## Mục tiêu
 
-The system follows a modular, multi-agent design:
+- Theo dõi task Jira, build Azure DevOps, tin nhắn Teams
+- Tạo tóm tắt hằng ngày/tuần theo workflow cá nhân
+- Cho phép automation có kiểm soát trong container
 
-1. **Task Manager Agent**: Integrates with Jira to track and summarize tasks, deadlines, and statuses.
-2. **Communication Agent**: Connects to Microsoft Teams to read, summarize, and extract actionable requests and bug reports.
-3. **Research Agent**: Uses browser automation to monitor Reddit, VOZ, X, and tech blogs for Flutter, iOS/Android, and AI news.
-4. **Planner Agent**: Generates daily and weekly plans based on historical logs and priorities.
-5. **DevOps Agent**: Monitors Git and CI/CD pipelines (Azure DevOps/GitHub Actions), summarizing build failures and suggesting refactors.
+## Yêu cầu trước khi chạy
 
-All agents run autonomously within time-windowed constraints, orchestrated by OpenClaw's internal scheduler (`workspace/HEARTBEAT.md`).
+- Docker Desktop (đã bật Docker Compose)
+- Git
+- macOS/Linux shell
+- Tài khoản và token cho các dịch vụ cần dùng (Jira, Azure, Teams, Figma, Telegram)
 
-## 🔒 Security & Privacy
+## Cấu trúc chính
 
-Security is paramount. This environment enforces:
-- **Docker Isolation**: Runs exclusively inside a non-root container.
-- **Localhost Binding**: Binds strictly to `127.0.0.1`—no public ports exposed.
-- **Secret Management**: All tokens and API keys are stored in environment variables, never in plain text files.
-- **Human-In-The-Loop (HITL)**: Requires explicit user approval (via Telegram) for file deletions, system-level commands, and external state modifications.
-- **Skill Policy**: Only local, pre-verified skills in the `skills/` directory are executed.
+- `docker-compose.yml`: khởi chạy `openclaw_agent` và `openclaw_vault`
+- `entrypoint.sh`: nạp secrets từ Vault vào runtime OpenClaw
+- `config/policies.yaml`: network/tool policy
+- `skills/`: bộ skill theo domain
+- `openclaw_data/`: state runtime của OpenClaw (đã ignore khỏi git)
 
-## 🚀 Getting Started
+## Quick Start cho người mới clone
 
-### 1. Configure Environment Variables
-Copy the example configuration file and fill in your actual API keys and tokens:
+### 1) Clone repo
+
 ```bash
-cp .env.example .env
-```
-*Make sure to provide your Telegram Bot Token, Jira API Token, Teams Credentials, and LLM API Key (e.g., OpenAI/Anthropic).*
-
-### 2. Build and Run the Docker Container
-The system is fully containerized. Start it using Docker Compose:
-```bash
-docker-compose up --build -d
-```
-To view the logs:
-```bash
-docker-compose logs -f
+git clone <repo-url>
+cd openclaw_manager
 ```
 
-## 🧠 Memory System
-The agent utilizes a file-based persistent memory system located in the `workspace/` directory:
-- `USER.md`: Stores your profile, work habits, and output preferences.
-- `MEMORY.md`: Long-term system state, known project issues, and high-level goals.
-- `HEARTBEAT.md`: The cron-like checklist the agent reviews every 30 minutes.
-- `YYYY-MM-DD.md`: Daily generated logs containing your daily plans, progress, and end-of-day summaries.
+### 2) Khởi động dịch vụ
 
-## 📋 Example Workflows
+```bash
+docker compose up -d --build
+docker compose ps
+```
 
-### 1. Morning Briefing (08:00 AM)
-- **Trigger**: Heartbeat cron matches 08:00.
-- **Action**: The **Planner Agent** reviews yesterday's log, checks Jira via the **Task Manager Agent**, and generates `workspace/2026-03-22.md`.
-- **Output**: You receive a Telegram message with a prioritized task list and a summary of overnight Teams messages.
+UI Vault local: `http://127.0.0.1:8200`
 
-### 2. CI/CD Build Failure
-- **Trigger**: **DevOps Agent** detects a failed Azure DevOps pipeline during a heartbeat check.
-- **Action**: The agent fetches the build logs, identifies a Gradle version mismatch, and queries the **Research Agent** for the latest stable Flutter/Gradle combination.
-- **Output**: Telegram message: *"Build failed on branch `feature/login`. Cause: Gradle version mismatch. Suggested fix: Update `android/build.gradle` to version 8.1.0."*
+### 3) Init Vault lần đầu
 
-### 3. Weekly Research Digest (Monday Morning)
-- **Trigger**: Weekly heartbeat trigger.
-- **Action**: **Research Agent** scrapes top posts from `/r/FlutterDev`, tech blogs, and VOZ regarding AI tools and mobile development.
-- **Output**: A concise markdown digest appended to your Monday log and sent via Telegram.
+Nếu là môi trường mới hoàn toàn, chạy:
 
-### 4. Task Extraction from Teams
-- **Trigger**: New message in the Product team channel.
-- **Action**: **Communication Agent** identifies an actionable bug report from a Product Manager. It proposes creating a Jira ticket.
-- **Output**: Telegram prompt: *"PM reported a UI glitch on the iOS payment screen. Should I create a Jira ticket with High priority? [Approve/Reject]"*
+```bash
+docker exec -it openclaw_vault vault operator init
+docker exec -it openclaw_vault vault operator unseal <UNSEAL_KEY_1>
+docker exec -it openclaw_vault vault operator unseal <UNSEAL_KEY_2>
+docker exec -it openclaw_vault vault operator unseal <UNSEAL_KEY_3>
+```
+
+Lưu lại `Initial Root Token` ở nơi an toàn.
+
+### 4) Đăng nhập Vault và ghi secrets
+
+```bash
+docker exec -it openclaw_vault vault login <ROOT_OR_ADMIN_TOKEN>
+docker exec -it openclaw_vault vault kv put openclaw_secrets/api_keys \
+  JIRA_BASE_URL="https://your-domain.atlassian.net" \
+  JIRA_USER_EMAIL="you@company.com" \
+  JIRA_API_TOKEN="xxx" \
+  AZURE_DEVOPS_ORG_URL="https://dev.azure.com/your-org" \
+  AZURE_DEVOPS_ORG="your-org" \
+  AZURE_DEVOPS_PROJECT="your-project" \
+  AZURE_DEVOPS_PAT="xxx" \
+  MS_TENANT_ID="xxx" \
+  MS_CLIENT_ID="xxx" \
+  MS_CLIENT_SECRET="xxx" \
+  TEAMS_USER_EMAIL="you@company.com" \
+  GRAPH_BASE_URL="https://graph.microsoft.com/v1.0" \
+  GRAPH_SCOPES="https://graph.microsoft.com/.default" \
+  FIGMA_API_TOKEN="xxx" \
+  FIGMA_FILE_KEY="xxx" \
+  FIGMA_TEAM_ID="xxx" \
+  FIGMA_ORG_ID="xxx"
+```
+
+### 5) Truyền `VAULT_TOKEN` vào container OpenClaw
+
+`entrypoint.sh` chỉ fetch secret khi có `VAULT_TOKEN`.
+
+```bash
+export VAULT_TOKEN='<VAULT_TOKEN_CO_QUYEN_DOC_openclaw_secrets/api_keys>'
+docker compose up -d --build --force-recreate openclaw
+```
+
+### 6) Kiểm tra OpenClaw đã nạp config
+
+```bash
+docker logs --tail 80 openclaw_agent
+docker exec openclaw_agent openclaw config validate
+```
+
+Nếu thành công, log sẽ có dòng `Secrets successfully loaded into RAM environment.`
+
+## Sử dụng
+
+- Gateway WebSocket: `ws://127.0.0.1:3000`
+- Token gateway nằm trong `openclaw_data/openclaw.json` phần `gateway.auth.token`
+- Khi vào Control UI, dùng đúng token gateway để pair
+
+## Tích hợp dịch vụ
+
+### Jira
+
+- Cần: `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_API_TOKEN`
+
+### Azure DevOps
+
+- Cần: `AZURE_DEVOPS_ORG_URL`, `AZURE_DEVOPS_ORG`, `AZURE_DEVOPS_PROJECT`, `AZURE_DEVOPS_PAT`
+
+### Microsoft Teams / Graph
+
+- Cần: `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `TEAMS_USER_EMAIL`
+- App Registration trên Entra ID cần cấp quyền Graph phù hợp và admin consent
+
+### Figma
+
+- Cần: `FIGMA_API_TOKEN`, `FIGMA_FILE_KEY`
+- Optional: `FIGMA_TEAM_ID`, `FIGMA_ORG_ID`
+
+## Xử lý lỗi thường gặp
+
+### 1) `VAULT_TOKEN is not set, skipping Vault secret fetch`
+
+```bash
+export VAULT_TOKEN='<token>'
+docker compose up -d --build --force-recreate openclaw
+```
+
+### 2) Browser tool lỗi trong container
+
+Repo đã bật cấu hình phù hợp container (`headless`, `noSandbox`, `shm_size`).
+Nếu vẫn lỗi:
+
+```bash
+docker compose up -d --build --force-recreate openclaw
+docker logs --tail 120 openclaw_agent
+```
+
+### 3) GitHub push lỗi `Permission denied (publickey)`
+
+- Cấu hình SSH key đúng account và đúng host alias trong `~/.ssh/config`
+- Kiểm tra:
+
+```bash
+ssh -T git@github.com
+```
+
+## Bảo mật bắt buộc
+
+- Không commit token vào git.
+- `openclaw_data/` đã được ignore để tránh đẩy state runtime lên remote.
+- Backup dạng `*.bak` chứa dữ liệu nhạy cảm, không lưu trữ lâu.
+- Bất kỳ AI/agent nào có quyền đọc workspace đều có thể đọc file plaintext trong repo local.
+- Chỉ giữ secrets trong Vault hoặc env runtime, rotate token ngay nếu từng lộ ra log/file.
