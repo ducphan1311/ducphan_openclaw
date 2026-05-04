@@ -4,11 +4,13 @@ services:
   openclaw:
     build: .
     container_name: openclaw_agent
+    command: ["openclaw", "gateway", "--allow-unconfigured", "--port", "18789"]
     restart: unless-stopped
     depends_on:
       - vault
     ports:
-      - "3000:3000"
+      - "3000:18789"
+      - "18789:18789"
     environment:
       - OPENCLAW_ENV=production
       - OPENCLAW_HOST=0.0.0.0

@@ -1,13 +1,12 @@
 #!/bin/bash
 set -e
 
-# Wait for Vault to be ready
-echo "Waiting for Vault to be ready at ${VAULT_ADDR}..."
-while ! curl -s -f ${VAULT_ADDR}/v1/sys/health > /dev/null; do
-  sleep 2
-done
-
 if [ -n "${VAULT_TOKEN:-}" ]; then
+  # Only block on Vault when a token is provided and secrets are expected.
+  echo "Waiting for Vault to be ready at ${VAULT_ADDR}..."
+  while ! curl -s -f "${VAULT_ADDR}/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204" > /dev/null; do
+    sleep 2
+  done
   echo "Fetching secrets from Vault..."
   echo "Calling Vault API at ${VAULT_ADDR}/v1/openclaw_secrets/data/api_keys"
   SECRETS_JSON=$(curl -sS -L -H "X-Vault-Token: $VAULT_TOKEN" "${VAULT_ADDR}/v1/openclaw_secrets/data/api_keys")
