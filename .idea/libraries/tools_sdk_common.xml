@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="tools.sdk-common">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/sdk-common/tools.sdk-common.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

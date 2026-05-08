@@ -75,7 +75,18 @@ docker exec -it openclaw_vault vault kv put openclaw_secrets/api_keys \
   FIGMA_API_TOKEN="xxx" \
   FIGMA_FILE_KEY="xxx" \
   FIGMA_TEAM_ID="xxx" \
-  FIGMA_ORG_ID="xxx"
+  FIGMA_ORG_ID="xxx" \
+  GMAIL_ACCOUNT="you@gmail.com" \
+  GMAIL_USER="you@gmail.com" \
+  GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx" \
+  BROWSERACT_API_KEY="xxx" \
+  APIFY_TOKEN="xxx" \
+  AMADEUS_API_KEY="xxx" \
+  AMADEUS_API_SECRET="xxx" \
+  AMADEUS_BASE_URL="https://test.api.amadeus.com" \
+  AGENT_BRAIN_SUPERMEMORY_SYNC="off" \
+  AGENT_BRAIN_PII_MODE="strict" \
+  AGENT_BRAIN_REMOTE_EMBEDDINGS="off"
 ```
 
 ### 5) Truyền `VAULT_TOKEN` vào container OpenClaw
@@ -102,6 +113,30 @@ Nếu thành công, log sẽ có dòng `Secrets successfully loaded into RAM env
 - Token gateway nằm trong `openclaw_data/openclaw.json` phần `gateway.auth.token`
 - Khi vào Control UI, dùng đúng token gateway để pair
 
+## Chạy native trên macOS
+
+Nếu không dùng Docker, chạy gateway bằng:
+
+```bash
+./start_native.sh
+```
+
+Native gateway hiện dùng port `18789`:
+
+```bash
+lsof -nP -iTCP:18789 -sTCP:LISTEN
+```
+
+`start_native.sh` sẽ:
+
+- Nạp `.env` nếu có.
+- Fetch secrets từ Vault nếu có `VAULT_TOKEN` hoặc `~/.vault-token`.
+- Dùng `openclaw_data/openclaw.json` làm state local.
+- Dùng `skills/` làm workspace skills directory.
+- Sync các biến Jira/Figma/Gmail/Shopping/Amadeus/Memory vào runtime config.
+
+Sau khi thêm hoặc sửa skill trong `skills/`, restart native gateway để OpenClaw nạp skill mới.
+
 ## Tích hợp dịch vụ
 
 ### Jira
@@ -121,6 +156,41 @@ Nếu thành công, log sẽ có dòng `Secrets successfully loaded into RAM env
 
 - Cần: `FIGMA_API_TOKEN`, `FIGMA_FILE_KEY`
 - Optional: `FIGMA_TEAM_ID`, `FIGMA_ORG_ID`
+
+### Gmail / Google Workspace
+
+- Đọc/tóm tắt Gmail: `GMAIL_ACCOUNT`
+- SMTP/IMAP app-password mode: `GMAIL_USER`, `GMAIL_APP_PASSWORD`
+- Luôn lưu app password trong Vault/env runtime, không commit vào repo.
+
+### Shopping / săn sale
+
+- Amazon BrowserAct workflows: `BROWSERACT_API_KEY`
+- Apify price monitor workflows: `APIFY_TOKEN`
+- Bot chỉ nghiên cứu/so sánh giá; checkout/mua/return cần xác nhận thủ công trong cùng lượt chat.
+
+### Flights / travel
+
+- Amadeus: `AMADEUS_API_KEY`, `AMADEUS_API_SECRET`
+- Sandbox mặc định: `AMADEUS_BASE_URL=https://test.api.amadeus.com`
+- Production real fare: `AMADEUS_BASE_URL=https://api.amadeus.com`
+- Bot chỉ tìm/so sánh chuyến bay; booking/check-in/thay đổi hành khách cần xác nhận thủ công.
+
+### Memory + planning + English
+
+- Local memory mặc định dùng `workspace/memory/`.
+- Nếu dùng `agent-brain`, giữ `AGENT_BRAIN_SUPERMEMORY_SYNC=off`, `AGENT_BRAIN_PII_MODE=strict`, `AGENT_BRAIN_REMOTE_EMBEDDINGS=off` trừ khi bạn chủ động bật cloud/remote embedding.
+
+## Skill setup hiện tại
+
+- `skills/browser_automation/`: UI testing, browser automation, screenshot, public web research.
+- `skills/email_assistant/`: Gmail summary, email triage, draft/send với approval.
+- `skills/codebase_intelligence/`: AgentLens/Atris-style repo map; map nằm ở `atris/MAP.md`.
+- `skills/shopping_research/`: săn sale, so sánh sản phẩm, wishlist/watchlist.
+- `skills/travel_flights/`: tìm và so sánh chuyến bay.
+- `skills/memory/`: memory local, không lưu secret.
+- `skills/english_learning_planner/`: kế hoạch cá nhân và học tiếng Anh.
+- Review rủi ro skill bên ngoài nằm ở `docs/skill-security-review.md`.
 
 ## Xử lý lỗi thường gặp
 

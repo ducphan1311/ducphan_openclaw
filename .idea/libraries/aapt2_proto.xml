@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="aapt2-proto">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/build-system/aapt2-proto/aapt2-proto.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

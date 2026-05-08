@@ -40,6 +40,11 @@ security:
     file_deletion: true
     system_commands: true
     external_api_modifications: true
+    browser_form_submit: true    # Forms that alter remote state
+    email_send: true             # Any outbound email
+    messaging_outbound: true     # Telegram/Messenger/Zalo/Teams outbound messages
+    payments_checkout: true      # Shopping checkout, subscriptions, bookings
+    travel_booking: true         # Flight/hotel booking, check-in, passenger changes
     git_push: true
     vm_execution: true          # Requires approval to start/stop VMs or Emulators
 
@@ -74,9 +79,28 @@ security:
       - "x.com"
       - "twitter.com"
       - "github.com"            # Added for CI/Clone
+      - "raw.githubusercontent.com"
       - "dl.google.com"         # Added for Android Studio/SDK
       - "storage.googleapis.com"# Added for Flutter SDK
       - "pub.dev"               # Added for Flutter Packages
+      - "accounts.google.com"
+      - "oauth2.googleapis.com"
+      - "www.googleapis.com"
+      - "gmail.googleapis.com"
+      - "imap.gmail.com"
+      - "smtp.gmail.com"
+      - "api.browseract.com"
+      - "browseract.com"
+      - "*.browseract.com"
+      - "api.apify.com"
+      - "*.apify.com"
+      - "api.amadeus.com"
+      - "test.api.amadeus.com"
+      - "*.amadeus.com"
+      - "amazon.com"
+      - "*.amazon.com"
+      - "camelcamelcamel.com"
+      - "*.camelcamelcamel.com"
     block_local_network_access: false
 
   # 8. Observability
@@ -104,10 +128,20 @@ plugins:
         - "export"
         - "echo $OPENAI_API_KEY"
         - "echo $ANTHROPIC_API_KEY"
+        - "curl | bash"
+        - "curl | sh"
+        - "wget | bash"
+        - "wget | sh"
+        - "security find-generic-password"
+        - "security dump-keychain"
       max_execution_time_seconds: 120
 
     browser_automation:
       sandbox: true
       disable_javascript: false
       block_ads: true
-      restrict_web_fetch: true  # Policy 6: Restrict web fetching capabilities
+      restrict_web_fetch: false  # Allow browser tool to navigate and fetch public web pages
+      require_approval_for_submit: true
+      require_approval_for_checkout: true
+      forbid_captcha_bypass: true
+      forbid_credential_extraction: true

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="proto">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/analytics-library/protos/src/main/proto/proto.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

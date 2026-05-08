@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="lint">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/lint/tools.lint-checks.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/lint/tools.lint-model.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/lint/tools.lint-api.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/lint/lint-checks-proto.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="analyzer-cli">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/apkparser/cli/analyzer-cli.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

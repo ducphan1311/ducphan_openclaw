@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="tools.analytics-shared">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/analytics-library/shared/tools.analytics-shared.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
