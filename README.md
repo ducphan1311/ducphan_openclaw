@@ -132,10 +132,19 @@ lsof -nP -iTCP:18789 -sTCP:LISTEN
 - Nạp `.env` nếu có.
 - Fetch secrets từ Vault nếu có `VAULT_TOKEN` hoặc `~/.vault-token`.
 - Dùng `openclaw_data/openclaw.json` làm state local.
-- Dùng `skills/` làm workspace skills directory.
+- Dùng `openclaw_data/.openclaw/workspace` làm agent workspace.
+- Link `openclaw_data/.openclaw/workspace/skills` trỏ về repo `skills/`, vì OpenClaw load skill từ `<agent-workspace>/skills/<skill>/SKILL.md`.
 - Sync các biến Jira/Figma/Gmail/Shopping/Amadeus/Memory vào runtime config.
 
 Sau khi thêm hoặc sửa skill trong `skills/`, restart native gateway để OpenClaw nạp skill mới.
+
+Nếu cần sync riêng Gmail secrets từ Vault vào runtime config mà không in secret:
+
+```bash
+export VAULT_TOKEN='<VAULT_TOKEN_CO_QUYEN_DOC_openclaw_secrets/api_keys>'
+node scripts/sync_gmail_from_vault.js
+./start_native.sh
+```
 
 ## Tích hợp dịch vụ
 

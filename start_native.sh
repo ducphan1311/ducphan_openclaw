@@ -12,6 +12,7 @@ export OPENCLAW_SKILLS_DIR="$REPO_DIR/skills"
 export OPENCLAW_CONFIG_DIR="$REPO_DIR/config"
 export OPENCLAW_DATA_DIR="$REPO_DIR/openclaw_data"
 export OPENCLAW_CONFIG_PATH="$OPENCLAW_DATA_DIR/openclaw.json"
+export OPENCLAW_AGENT_WORKSPACE="$OPENCLAW_DATA_DIR/.openclaw/workspace"
 
 if [ -f "$REPO_DIR/.env" ]; then
     set -a
@@ -109,7 +110,16 @@ fi
 node "$REPO_DIR/patch_openclaw_rate_limit_retry.js"
 
 # 3. Create required directories if they don't exist
-mkdir -p "$OPENCLAW_WORKSPACE" "$OPENCLAW_SKILLS_DIR" "$OPENCLAW_CONFIG_DIR" "$OPENCLAW_DATA_DIR"
+mkdir -p "$OPENCLAW_WORKSPACE" "$OPENCLAW_SKILLS_DIR" "$OPENCLAW_CONFIG_DIR" "$OPENCLAW_DATA_DIR" "$OPENCLAW_AGENT_WORKSPACE"
+
+# OpenClaw loads workspace skills from the active agent workspace:
+#   <agent-workspace>/skills/<skill>/SKILL.md
+# Keep that path pointed at this repo's curated skills directory.
+if [ -e "$OPENCLAW_AGENT_WORKSPACE/skills" ] && [ ! -L "$OPENCLAW_AGENT_WORKSPACE/skills" ]; then
+    echo "Warning: $OPENCLAW_AGENT_WORKSPACE/skills exists and is not a symlink; leaving it unchanged."
+else
+    ln -sfn "$OPENCLAW_SKILLS_DIR" "$OPENCLAW_AGENT_WORKSPACE/skills"
+fi
 
 # Ensure we use the local openclaw_data folder for config instead of the user's home ~/.openclaw
 export OPENCLAW_DATA_DIR="$REPO_DIR/openclaw_data"
@@ -154,6 +164,7 @@ if (data.models.providers.google && Object.keys(data.models.providers.google).le
 }
 data.agents ??= {};
 data.agents.defaults ??= {};
+data.agents.defaults.workspace = process.env.OPENCLAW_AGENT_WORKSPACE;
 data.agents.defaults.model = {
   primary: "google/gemini-3.1-flash-lite-preview",
   fallbacks: [],
@@ -244,4 +255,4 @@ echo "Workspace: $OPENCLAW_WORKSPACE"
 echo "Policies: $OPENCLAW_CONFIG"
 echo "State: $OPENCLAW_DATA_DIR"
 
-openclaw gateway --allow-unconfigured --port 18789
+openclaw gateway --allow-unconfigured --force --port 18789
