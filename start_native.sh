@@ -49,6 +49,13 @@ if command -v curl >/dev/null 2>&1; then
             if (!secrets || typeof secrets !== 'object') throw new Error('unexpected Vault response shape');
             const emit = (key, value) => {
               if (value === null || value === undefined || value === '') return;
+              const aliases = {
+                '9ROUTER_API_KEY': 'NINE_ROUTER_API_KEY',
+                '9ROUTER_BASE_URL': 'NINE_ROUTER_BASE_URL',
+                '9ROUTER_MODEL': 'NINE_ROUTER_MODEL',
+              };
+              key = aliases[key] || key;
+              if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) return;
               const safeValue = String(value).replace(/'/g, \"'\\\\''\");
               console.log('export ' + key + '=\\'' + safeValue + '\\'');
             };
@@ -136,6 +143,19 @@ const googleKey = (
   process.env.GEMINI_API_KEY ||
   ""
 ).trim();
+const nineRouterKey = (
+  process.env.NINE_ROUTER_API_KEY ||
+  process.env.ROUTER9_API_KEY ||
+  ""
+).trim();
+const nineRouterBaseUrl = (
+  process.env.NINE_ROUTER_BASE_URL ||
+  "http://127.0.0.1:20128/v1"
+).trim();
+const nineRouterModel = (
+  process.env.NINE_ROUTER_MODEL ||
+  "cx/gpt-5.5"
+).trim();
 const allowedUsers = (process.env.TELEGRAM_ALLOWED_USERS || "")
   .split(",")
   .map((value) => value.trim())
@@ -162,15 +182,41 @@ data.models.providers ??= {};
 if (data.models.providers.google && Object.keys(data.models.providers.google).length === 0) {
   delete data.models.providers.google;
 }
+const existingNineRouterProvider = data.models.providers["9router"] || {};
+const resolvedNineRouterKey = nineRouterKey || String(existingNineRouterProvider.apiKey || "").trim();
+const resolvedNineRouterBaseUrl =
+  nineRouterBaseUrl || String(existingNineRouterProvider.baseUrl || "").trim();
+const resolvedNineRouterModel =
+  nineRouterModel ||
+  String(existingNineRouterProvider.models?.[0]?.id || "").trim() ||
+  "cx/gpt-5.5";
+
+if (resolvedNineRouterKey) {
+  data.models.providers["9router"] = {
+    ...existingNineRouterProvider,
+    baseUrl: resolvedNineRouterBaseUrl,
+    apiKey: resolvedNineRouterKey,
+    api: "openai-completions",
+    models: [
+      {
+        id: resolvedNineRouterModel,
+        name: resolvedNineRouterModel,
+      },
+    ],
+  };
+}
 data.agents ??= {};
 data.agents.defaults ??= {};
 data.agents.defaults.workspace = process.env.OPENCLAW_AGENT_WORKSPACE;
 data.agents.defaults.model = {
-  primary: "google/gemini-3.1-flash-lite-preview",
-  fallbacks: [],
+  primary: resolvedNineRouterKey ? `9router/${resolvedNineRouterModel}` : "google/gemini-3.1-flash-lite-preview",
+  fallbacks: resolvedNineRouterKey ? ["google/gemini-3.1-flash-lite-preview"] : [],
 };
 data.agents.defaults.models ??= {};
 data.agents.defaults.models["google/gemini-3.1-flash-lite-preview"] ??= {};
+if (resolvedNineRouterKey) {
+  data.agents.defaults.models[`9router/${resolvedNineRouterModel}`] ??= {};
+}
 data.agents.defaults.timeoutSeconds = Math.max(
   Number(data.agents.defaults.timeoutSeconds) || 0,
   86400
@@ -201,6 +247,9 @@ for (const key of [
   "FIGMA_FILE_KEY",
   "FIGMA_TEAM_ID",
   "FIGMA_ORG_ID",
+  "NINE_ROUTER_API_KEY",
+  "NINE_ROUTER_BASE_URL",
+  "NINE_ROUTER_MODEL",
   "GMAIL_ACCOUNT",
   "GMAIL_USER",
   "GMAIL_APP_PASSWORD",
@@ -247,6 +296,8 @@ if (allowedUsers.length > 0) {
 }
 
 fs.writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+console.log(`nine_router_provider_configured=${Boolean(resolvedNineRouterKey)}`);
+console.log(`openclaw_default_model=${data.agents?.defaults?.model?.primary || ""}`);
 NODE
 
 # 4. Start the gateway
@@ -255,4 +306,14 @@ echo "Workspace: $OPENCLAW_WORKSPACE"
 echo "Policies: $OPENCLAW_CONFIG"
 echo "State: $OPENCLAW_DATA_DIR"
 
-openclaw gateway --allow-unconfigured --force --port 18789
+if command -v lsof >/dev/null 2>&1; then
+    LISTENER_PIDS="$(lsof -tiTCP:18789 -sTCP:LISTEN 2>/dev/null || true)"
+    if [ -n "$LISTENER_PIDS" ]; then
+        echo "Port 18789 is already in use by PID(s): $LISTENER_PIDS"
+        echo "If this is an existing OpenClaw gateway, leave this terminal closed and keep using Telegram."
+        echo "To restart cleanly, run: kill $LISTENER_PIDS && sleep 3 && ./start_native.sh"
+        exit 0
+    fi
+fi
+
+openclaw gateway --allow-unconfigured --port 18789
