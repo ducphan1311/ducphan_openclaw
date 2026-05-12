@@ -50,6 +50,7 @@ Secrets must come from Vault or runtime env. Never ask the user to paste secrets
 - For bulk label/archive/delete operations, show a preview of scope before execution.
 - For any delete/move/archive action, show the message IDs, sender, subject, and folder before execution.
 - Never run `himalaya folder expunge` unless the user explicitly asks for permanent deletion after previewing the affected folder.
+- Important Gmail Bin behavior: `himalaya folder expunge "[Gmail]/Bin"` only permanently deletes messages already flagged `\\Deleted`; it does **not** empty all visible Bin messages by itself. To permanently empty Gmail Bin after explicit approval, first scan/list Bin IDs, run `himalaya message delete --folder "[Gmail]/Bin" <ids...>` in safe batches to mark those Bin messages deleted, then run `himalaya folder expunge "[Gmail]/Bin"`, then rescan `[Gmail]/Bin` and only report success when count is 0.
 - Do not auto-forward sensitive content such as invoices, legal documents, credentials, private HR messages, or financial records.
 - Summaries should preserve exact dates, names, invoice numbers, deadlines, and amounts.
 
@@ -83,6 +84,12 @@ Secrets must come from Vault or runtime env. Never ask the user to paste secrets
   - Copy messages from INBOX to a folder: `himalaya message copy --folder INBOX "<target-folder>" <id>...`
 - For `message move` and `message copy`, the target folder argument comes before the message IDs. Never run `himalaya message move <id> "<folder>"`.
 - This Gmail account's trash folder is `[Gmail]/Bin`.
+- Permanent empty-bin workflow for this account:
+  1. Confirm the user explicitly approved permanent deletion and named `[Gmail]/Bin` / Gmail Bin plus approximate count.
+  2. Scan `[Gmail]/Bin` metadata first, preferably with `node /Users/ducphan/Documents/trae_projects/openclaw_manager/scripts/scan_himalaya_mailbox.js --folder "[Gmail]/Bin" --page-size 500`.
+  3. Extract every envelope ID from the scan output and run `himalaya message delete --folder "[Gmail]/Bin" <ids...>` in batches (for example 50-100 IDs per command). This marks visible Bin messages with `\\Deleted`.
+  4. Run `himalaya folder expunge "[Gmail]/Bin"`.
+  5. Rescan `[Gmail]/Bin`; do **not** tell the user it is done unless the verified count is 0. If Gmail web still shows messages, mention possible UI/sync delay only after IMAP count is 0.
 - If Himalaya authentication fails with "Application-specific password required", report that the stored `GMAIL_APP_PASSWORD` is not a valid Gmail App Password for the configured account. Do not ask to use browser as the primary workaround.
 - Use browser Gmail only as a temporary fallback when the user explicitly accepts it or when the CLI backend cannot be authenticated.
 
