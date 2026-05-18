@@ -12,6 +12,20 @@ tools:
 
 Use this skill for UI testing, browser interaction, screenshots, and public website research.
 
+## OpenClaw Browser Profiles
+- Use OpenClaw browser profile `facebook-travel` for Facebook, Messenger, travel browsing, and any task that needs Danny's logged-in social/travel session.
+- Prefer the first-class browser tool with profile `facebook-travel`; do not fall back to manual CDP probing unless the browser tool is unavailable.
+- The profile is registered in OpenClaw config as the default browser profile and uses the local managed Chrome session on CDP port `18821`.
+- If login, 2FA, captcha, checkpoint, or suspicious-login review appears, stop and ask Danny to complete it manually in the visible browser.
+- Do not send messages, post, react, purchase, book travel, or change account settings without explicit same-turn approval.
+
+## Token-Safe Browser Loop
+- Keep browser snapshots small. Default to `maxChars` 2500-4000 for search/result pages, and only raise it when a narrower extraction is impossible.
+- For pages with long result lists, capture the first useful screen, extract the top 3-5 candidates, then close or reuse tabs instead of opening many new tabs.
+- Do not paste full OTA, Facebook, search, or marketplace page text back into the model. Summarize selected offers/leads with source URL, price/name, and confidence.
+- After each large browser result, consolidate findings before the next model call. If a page output is truncated, narrow the query/filter or use targeted `evaluate`/element refs instead of requesting a larger snapshot.
+- Close unrelated tabs once their data is captured.
+
 ## Approved Capabilities
 1. Test local or staging pages with Playwright-style flows.
 2. Check responsive layout, visible errors, form validation, redirects, and broken links.

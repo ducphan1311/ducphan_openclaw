@@ -64,6 +64,52 @@ function normalizeConfig(configPath) {
     data.env.vars.OPENCLAW_HEARTBEAT_INTERVAL || "60"
   );
 
+  data.browser ??= {};
+  data.browser.enabled = true;
+  data.browser.headless = false;
+  data.browser.defaultProfile = "facebook-travel";
+  data.browser.profiles ??= {};
+  const profileName = "facebook-travel";
+  const usedCdpPorts = new Set(
+    Object.entries(data.browser.profiles)
+      .filter(([name]) => name !== profileName)
+      .map(([, profile]) => Number(profile?.cdpPort))
+      .filter((port) => Number.isInteger(port) && port > 0)
+  );
+  const currentProfile = data.browser.profiles[profileName] || {};
+  let cdpPort =
+    Number.isInteger(Number(currentProfile.cdpPort)) &&
+    Number(currentProfile.cdpPort) > 0
+      ? Number(currentProfile.cdpPort)
+      : 18821;
+  while (usedCdpPorts.has(cdpPort)) {
+    cdpPort += 1;
+  }
+  data.browser.profiles[profileName] = {
+    ...currentProfile,
+    driver: "openclaw",
+    cdpPort,
+    color: currentProfile.color || "#3B82F6",
+    headless: false,
+  };
+  data.browser.snapshotDefaults = {
+    ...(data.browser.snapshotDefaults || {}),
+    mode: "efficient",
+  };
+  data.browser.tabCleanup = {
+    ...(data.browser.tabCleanup || {}),
+    enabled: true,
+    idleMinutes: 30,
+    maxTabsPerSession: 6,
+    sweepMinutes: 5,
+  };
+
+  data.tools ??= {};
+  data.tools.profile ||= "coding";
+  const alsoAllow = new Set(Array.isArray(data.tools.alsoAllow) ? data.tools.alsoAllow : []);
+  alsoAllow.add("browser");
+  data.tools.alsoAllow = [...alsoAllow];
+
   data.agents ??= {};
   data.agents.defaults ??= {};
   data.agents.defaults.heartbeat ??= {};
@@ -79,9 +125,50 @@ function normalizeConfig(configPath) {
     Number(data.agents.defaults.subagents.maxConcurrent) || 2,
     2
   );
+  data.agents.defaults.bootstrapMaxChars = Math.min(
+    Number(data.agents.defaults.bootstrapMaxChars) || 8000,
+    8000
+  );
+  data.agents.defaults.bootstrapTotalMaxChars = Math.min(
+    Number(data.agents.defaults.bootstrapTotalMaxChars) || 30000,
+    30000
+  );
+  data.agents.defaults.contextLimits ??= {};
+  data.agents.defaults.contextLimits.toolResultMaxChars = Math.min(
+    Number(data.agents.defaults.contextLimits.toolResultMaxChars) || 12000,
+    12000
+  );
+  data.agents.defaults.contextLimits.memoryGetMaxChars = Math.min(
+    Number(data.agents.defaults.contextLimits.memoryGetMaxChars) || 12000,
+    12000
+  );
+  data.agents.defaults.contextLimits.postCompactionMaxChars = Math.min(
+    Number(data.agents.defaults.contextLimits.postCompactionMaxChars) || 6000,
+    6000
+  );
+  data.agents.defaults.compaction ??= {};
+  data.agents.defaults.compaction.mode = "safeguard";
+  data.agents.defaults.compaction.reserveTokens = Math.max(
+    Number(data.agents.defaults.compaction.reserveTokens) || 0,
+    24000
+  );
+  data.agents.defaults.compaction.keepRecentTokens = Math.min(
+    Number(data.agents.defaults.compaction.keepRecentTokens) || 12000,
+    12000
+  );
+  data.agents.defaults.compaction.maxHistoryShare = Math.min(
+    Number(data.agents.defaults.compaction.maxHistoryShare) || 0.45,
+    0.45
+  );
+  data.agents.defaults.compaction.recentTurnsPreserve = Math.min(
+    Number(data.agents.defaults.compaction.recentTurnsPreserve) || 2,
+    2
+  );
+  data.agents.defaults.compaction.midTurnPrecheck ??= {};
+  data.agents.defaults.compaction.midTurnPrecheck.enabled = true;
 
   const nineRouter = data.models?.providers?.["9router"];
-  const modelId = nineRouter?.models?.[0]?.id || data.env.vars.NINE_ROUTER_MODEL || "cx/gpt-5.5";
+  const modelId = nineRouter?.models?.[0]?.id || data.env.vars.NINE_ROUTER_MODEL || "oc1";
   if (nineRouter?.apiKey) {
     nineRouter.baseUrl ||= data.env.vars.NINE_ROUTER_BASE_URL || "http://127.0.0.1:20128/v1";
     nineRouter.api = "openai-completions";
@@ -89,13 +176,16 @@ function normalizeConfig(configPath) {
     data.env.vars.NINE_ROUTER_BASE_URL = nineRouter.baseUrl;
     data.env.vars.NINE_ROUTER_MODEL = modelId;
     data.env.vars.NINE_ROUTER_API_KEY ||= nineRouter.apiKey;
+    // 9router combo (e.g. "oc1") owns routing/fallback. Do not inject
+    // hardcoded fallback models from the orchestration layer.
     data.agents.defaults.model = {
       primary: `9router/${modelId}`,
-      fallbacks: ["google/gemini-3.1-flash-lite-preview"],
+      fallbacks: [],
     };
     data.agents.defaults.models ??= {};
     data.agents.defaults.models[`9router/${modelId}`] ??= {};
-    data.agents.defaults.models["google/gemini-3.1-flash-lite-preview"] ??= {};
+    // Drop legacy hardcoded fallback if present.
+    delete data.agents.defaults.models["google/gemini-3.1-flash-lite-preview"];
   }
 
   if (JSON.stringify(data) !== before) {
@@ -107,6 +197,7 @@ function normalizeConfig(configPath) {
     primary: data.agents?.defaults?.model?.primary || null,
     has9router: Boolean(data.models?.providers?.["9router"]?.apiKey),
     heartbeat: data.agents?.defaults?.heartbeat?.every || data.env?.vars?.OPENCLAW_HEARTBEAT_INTERVAL || null,
+    browserDefaultProfile: data.browser?.defaultProfile || null,
   };
 }
 

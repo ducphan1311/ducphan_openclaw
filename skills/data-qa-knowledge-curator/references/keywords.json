@@ -1,0 +1,83 @@
+{
+  "high_priority": [
+    "data quality",
+    "data validation",
+    "data testing",
+    "data observability",
+    "data reliability",
+    "data integrity",
+    "schema validation",
+    "data profiling",
+    "data monitoring",
+    "data anomaly",
+    "data reconciliation",
+    "great expectations",
+    "dbt test",
+    "data contract",
+    "data lineage"
+  ],
+  "medium_priority": [
+    "ETL testing",
+    "pipeline validation",
+    "data warehouse testing",
+    "SQL testing",
+    "data drift",
+    "schema evolution",
+    "data freshness",
+    "data completeness",
+    "data accuracy",
+    "data consistency",
+    "null check",
+    "duplicate detection",
+    "outlier detection",
+    "data quality framework",
+    "data quality metrics"
+  ],
+  "low_priority": [
+    "data engineering",
+    "analytics",
+    "business intelligence",
+    "reporting",
+    "dashboard"
+  ],
+  "exclude": [
+    "job posting",
+    "hiring",
+    "we're hiring",
+    "apply now",
+    "resume",
+    "interview question",
+    "salary",
+    "compensation",
+    "looking for",
+    "seeking",
+    "recruitment"
+  ],
+  "tools": [
+    "great expectations",
+    "dbt",
+    "airflow",
+    "soda",
+    "monte carlo",
+    "datafold",
+    "bigeye",
+    "metaplane",
+    "anomalo",
+    "lightup",
+    "databand",
+    "elementary",
+    "re_data"
+  ],
+  "concepts": [
+    "data contract",
+    "data mesh",
+    "data observability",
+    "data reliability engineering",
+    "shift left testing",
+    "data SLA",
+    "data incident",
+    "data downtime",
+    "data quality score",
+    "data health"
+  ]
+}

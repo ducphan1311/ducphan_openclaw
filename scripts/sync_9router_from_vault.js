@@ -72,13 +72,16 @@ function updateConfig(configPath, values) {
 
   data.agents ??= {};
   data.agents.defaults ??= {};
+  // 9router combo (e.g. "oc1") on the dashboard owns routing/fallback.
+  // Keep the orchestration layer free of hardcoded fallback models.
   data.agents.defaults.model = {
     primary: `9router/${values.model}`,
-    fallbacks: ["google/gemini-3.1-flash-lite-preview"],
+    fallbacks: [],
   };
   data.agents.defaults.models ??= {};
   data.agents.defaults.models[`9router/${values.model}`] ??= {};
-  data.agents.defaults.models["google/gemini-3.1-flash-lite-preview"] ??= {};
+  // Drop legacy hardcoded fallback that older versions wrote here.
+  delete data.agents.defaults.models["google/gemini-3.1-flash-lite-preview"];
 
   fs.writeFileSync(configPath, `${JSON.stringify(data, null, 2)}\n`);
   return true;
@@ -105,7 +108,7 @@ try {
   const model = firstString(
     secrets,
     ["NINE_ROUTER_MODEL", "9ROUTER_MODEL", "ROUTER9_MODEL"],
-    "cx/gpt-5.5"
+    "oc1"
   );
 
   console.log(`nine_router_api_key_present_in_vault=${Boolean(apiKey)}`);

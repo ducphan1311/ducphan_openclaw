@@ -154,7 +154,7 @@ const nineRouterBaseUrl = (
 ).trim();
 const nineRouterModel = (
   process.env.NINE_ROUTER_MODEL ||
-  "cx/gpt-5.5"
+  "oc1"
 ).trim();
 const allowedUsers = (process.env.TELEGRAM_ALLOWED_USERS || "")
   .split(",")
@@ -189,7 +189,7 @@ const resolvedNineRouterBaseUrl =
 const resolvedNineRouterModel =
   nineRouterModel ||
   String(existingNineRouterProvider.models?.[0]?.id || "").trim() ||
-  "cx/gpt-5.5";
+  "oc1";
 
 if (resolvedNineRouterKey) {
   data.models.providers["9router"] = {
@@ -208,14 +208,21 @@ if (resolvedNineRouterKey) {
 data.agents ??= {};
 data.agents.defaults ??= {};
 data.agents.defaults.workspace = process.env.OPENCLAW_AGENT_WORKSPACE;
-data.agents.defaults.model = {
-  primary: resolvedNineRouterKey ? `9router/${resolvedNineRouterModel}` : "google/gemini-3.1-flash-lite-preview",
-  fallbacks: resolvedNineRouterKey ? ["google/gemini-3.1-flash-lite-preview"] : [],
-};
-data.agents.defaults.models ??= {};
-data.agents.defaults.models["google/gemini-3.1-flash-lite-preview"] ??= {};
+// Routing & fallback are owned by the 9router combo (e.g. "oc1") on the
+// 9router dashboard. Do not duplicate fallback logic here; let the combo
+// handle model rotation inside 9router.
 if (resolvedNineRouterKey) {
+  data.agents.defaults.model = {
+    primary: `9router/${resolvedNineRouterModel}`,
+    fallbacks: [],
+  };
+  data.agents.defaults.models ??= {};
   data.agents.defaults.models[`9router/${resolvedNineRouterModel}`] ??= {};
+} else {
+  // No 9router key available; preserve any pre-existing local model setup
+  // but do not inject hardcoded fallbacks.
+  data.agents.defaults.model ??= { primary: "", fallbacks: [] };
+  data.agents.defaults.models ??= {};
 }
 data.agents.defaults.timeoutSeconds = Math.max(
   Number(data.agents.defaults.timeoutSeconds) || 0,

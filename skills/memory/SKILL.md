@@ -34,6 +34,15 @@ Use this skill to keep useful long-term context without leaking secrets or sensi
 2. After a confirmed new fact or preference, append or update the relevant section.
 3. Keep entries short, dated, and source-aware.
 
+## Danny Fast-Execution Lessons
+When Danny asks to "rút kinh nghiệm", "nhớ", "cải thiện lần sau", or asks for faster future execution:
+- Act in the same turn: update the relevant local skill or memory file instead of only promising.
+- Prefer durable, inspectable notes: put reusable behavior in the most specific `skills/*/SKILL.md`; put broad personal preference/context in `MEMORY.md` or `memory/YYYY-MM-DD.md`.
+- Keep updates concise and operational: checklist-style rules that a future agent can follow quickly.
+- If the request references "các phần trên" / previous context, distill from currently available context first; only ask a question if the missing detail would change the safe action.
+- For Telegram direct chat with Danny, respond in Vietnamese by default when Danny writes Vietnamese; be concise, proactive, and report exactly what changed.
+- Respect boundaries: do not store secrets or sensitive raw content; do not send external messages or make destructive changes without explicit approval.
+
 ## External Skill Decision
 - `dobrinalexandru/agent-brain` is feature-rich and local-first but includes optional SuperMemory sync. If installed later, set `AGENT_BRAIN_SUPERMEMORY_SYNC=off`.
 - `andreagriffiths11/agent-context` is a simpler local-only candidate if available and source review passes.
