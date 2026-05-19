@@ -15,7 +15,8 @@
 
 2. **Job Search Automation**
    - Search LinkedIn, Indeed, Glassdoor, VietnamWorks, TopCV, ITviec
-   - Filter by keywords, location, salary, experience level
+   - **Monitor Facebook IT groups** for freelance/part-time opportunities
+   - Filter by keywords, location, salary, experience level, **job type (freelance/part-time/contract)**
    - Save interesting positions with metadata
 
 3. **Application Tracking**
@@ -27,6 +28,48 @@
    - Research company background
    - Prepare common interview questions for role
    - Track interview feedback and learnings
+
+---
+
+## 👤 User Profile (Danny)
+
+**IMPORTANT:** Danny is looking for **FREELANCE / PART-TIME / CONTRACT** work as a **2nd job**, NOT full-time employment.
+
+### **Target Roles (Priority Order):**
+1. Flutter Developer ⭐⭐⭐⭐⭐ (Main expertise, 5+ years)
+2. React Native Developer ⭐⭐⭐⭐
+3. iOS Developer (Swift) ⭐⭐⭐⭐
+4. Android Developer (Kotlin) ⭐⭐⭐⭐
+5. Mobile Team Lead ⭐⭐⭐⭐ (Consulting, Code Review)
+6. Backend Developer (Java/Python/PHP) ⭐⭐⭐
+7. Fullstack Developer ⭐⭐⭐
+
+### **Skills:**
+- **Primary:** Flutter, React Native, iOS (Swift), Android (Kotlin)
+- **Secondary:** Java, Python, PHP, PostgreSQL, Firebase, Kafka, Docker
+
+### **Domains with Experience:**
+- Banking (VPBank NeoBiz Plus)
+- Fintech (Finavi)
+- Healthcare (HMUH AI)
+- E-commerce (YODY)
+- Education (Mainichi Nihongo)
+
+### **Rate Expectations:**
+- Freelance/Part-time: $500-2000/month
+- Hourly: $15-30/hour
+
+### **Job Type Preferences:**
+- ✅ Freelance, Part-time, Contract, Remote, Project-based
+- ❌ Full-time, Office-only, Relocation
+
+### **Search Keywords:**
+- "Flutter freelance", "React Native part-time", "iOS Swift freelance"
+- "Android Kotlin freelance", "Mobile developer remote"
+- "Java backend freelance", "Python backend part-time"
+- "Fullstack mobile freelance"
+
+**Reference:** `memory/cv_job_hunter/DANNY_JOB_PREFERENCES.md`
 
 ---
 
