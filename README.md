@@ -46,6 +46,7 @@ Cả hai chế độ đều cần:
 ```
 openclaw_manager/
 ├── skills/                    # Các agent skill
+│   ├── commander/             # Điều phối Commander → worker agents
 │   ├── browser_automation/    # Browser automation, screenshot, web research
 │   ├── codebase_intelligence/ # Repo map, code navigation (Atris-style)
 │   ├── communication/         # Telegram, Messenger, Zalo, Gmail
@@ -63,6 +64,7 @@ openclaw_manager/
 │   ├── travel_flights/        # Tìm chuyến bay (Amadeus)
 │   └── trolymail/             # Invoice/billing email workflows
 ├── scripts/
+│   ├── task_registry.js       # Task registry + approval broker JSONL/state
 │   ├── sync_9router_from_vault.js   # Sync 9Router config từ Vault
 │   ├── sync_gmail_from_vault.js     # Sync Gmail secrets từ Vault
 │   ├── openclaw_gateway_wrapper.sh  # Wrapper khởi động gateway
@@ -70,11 +72,21 @@ openclaw_manager/
 │   └── setup_himalaya_gmail.js      # Setup himalaya CLI cho Gmail
 ├── config/
 │   ├── policies.yaml          # Security & network policy
-│   └── openclaw.json          # OpenClaw base config
+│   ├── openclaw.json          # OpenClaw base config
+│   └── multi-agent.json       # Policy riêng cho Commander/Workers/approval
+├── agents/
+│   ├── commander.md           # Role definition cho bot chỉ huy
+│   └── workers/               # Role definitions cho worker bots
+├── data/
+│   ├── tasks/                 # Local task registry state/events
+│   └── approvals/             # Approval broker state/events
 ├── vault/
 │   └── config/vault.json      # Vault server config
 ├── atris/MAP.md               # Codebase navigation map
 ├── docs/skill-security-review.md
+├── docs/multi-agent-orchestration.md
+├── docs/multi-device-access.md
+├── docs/openclaw-operations.md
 ├── docker-compose.yml
 ├── Dockerfile
 ├── entrypoint.sh              # Docker: fetch Vault secrets → start gateway
@@ -135,6 +147,21 @@ lsof -nP -iTCP:18789 -sTCP:LISTEN
 
 # Xem log
 tail -f openclaw_data/native.log
+```
+
+Nếu muốn gateway chạy nền ổn định sau khi đóng terminal, dùng `screen`:
+
+```bash
+screen -dmS openclaw-gateway bash -lc './start_native.sh > openclaw_data/native.log 2>&1'
+screen -ls
+```
+
+Restart:
+
+```bash
+screen -S openclaw-gateway -X quit
+sleep 2
+screen -dmS openclaw-gateway bash -lc './start_native.sh > openclaw_data/native.log 2>&1'
 ```
 
 ---
@@ -226,8 +253,42 @@ node scripts/sync_9router_from_vault.js
 
 ## Skills (Agents)
 
+### Multi-Agent Orchestration
+
+OpenClaw Manager dùng mô hình **1 Commander + nhiều Worker Agents**:
+
+- Commander nhận lệnh từ Telegram/mobile/web, chia task, chọn worker, tạo approval request, và tổng hợp kết quả.
+- Worker chỉ làm việc chuyên môn theo role trong `agents/workers/*.md`.
+- Orchestration policy nằm ở `config/multi-agent.json`; không nhét vào `openclaw.json` để tránh lỗi schema gateway.
+- Task state được lưu tại `data/tasks/`; approval state được lưu tại `data/approvals/`.
+- Các action rủi ro như gửi email, mailbox mutation, post/purchase/booking, deploy, destructive change, git push, hoặc sửa note quan trọng phải đi qua approval broker.
+- Subagent concurrency mặc định được nâng lên `4`; main concurrency giữ thấp để Commander vẫn là điểm điều phối.
+
+Tài liệu chi tiết:
+
+- `docs/multi-agent-orchestration.md`
+- `docs/multi-device-access.md`
+- `docs/openclaw-operations.md`
+
+### Cấu trúc vận hành
+
+Các file chính:
+
+| File/folder | Mục đích |
+|-------------|----------|
+| `agents/commander.md` | Role của bot chỉ huy |
+| `agents/workers/*.md` | Role của từng worker |
+| `skills/commander/SKILL.md` | Skill điều phối để OpenClaw biết cách chia việc |
+| `config/multi-agent.json` | Policy orchestration/approval, tách khỏi `openclaw.json` |
+| `scripts/task_registry.js` | CLI quản lý task registry và approval broker |
+| `data/tasks/` | Runtime task state/events |
+| `data/approvals/` | Runtime approval state/events |
+
+Các file runtime trong `data/tasks/*.json`, `data/tasks/*.jsonl`, `data/approvals/*.json`, `data/approvals/*.jsonl` đã được `.gitignore`.
+
 | Skill | Mô tả |
 |-------|-------|
+| `commander` | Điều phối end-to-end qua worker agents, task registry, approval broker |
 | `browser_automation` | Browser automation, screenshot, public web research |
 | `codebase_intelligence` | Repo map (Atris-style), code navigation |
 | `communication` | Telegram, Messenger, Zalo, Gmail đa kênh |
@@ -254,6 +315,67 @@ node scripts/sync_9router_from_vault.js
 ### Telegram (giao diện chính)
 - `TELEGRAM_BOT_TOKEN`: token từ @BotFather
 - `TELEGRAM_ALLOWED_USERS`: danh sách user ID được phép (phân cách bằng dấu phẩy)
+
+#### Thêm mobile Telegram mới
+
+Nếu mobile mới dùng **cùng Telegram account**, thường không cần cấu hình thêm vì numeric user ID không đổi.
+
+Nếu mobile mới dùng **Telegram account khác**, làm như sau:
+
+1. Trên mobile mới, mở Telegram.
+2. Tìm một bot lấy ID như `@userinfobot`, `@RawDataBot`, hoặc `@getidsbot`.
+3. Bấm Start và ghi lại trường `id`, ví dụ:
+
+```text
+1234567890
+```
+
+4. Thêm ID vào `openclaw_data/openclaw.json`:
+
+```json
+"channels": {
+  "telegram": {
+    "dmPolicy": "allowlist",
+    "allowFrom": [
+      "1597126604",
+      "1234567890"
+    ]
+  }
+}
+```
+
+5. Chỉ nếu thiết bị đó được quyền approve hành động rủi ro, thêm vào `ownerAllowFrom`:
+
+```json
+"commands": {
+  "ownerAllowFrom": [
+    "telegram:1597126604",
+    "telegram:1234567890"
+  ]
+}
+```
+
+6. Restart gateway:
+
+```bash
+screen -S openclaw-gateway -X quit
+sleep 2
+screen -dmS openclaw-gateway bash -lc './start_native.sh > openclaw_data/native.log 2>&1'
+```
+
+7. Trên mobile mới, nhắn bot Telegram hiện tại:
+
+```text
+@openclaw_2303_bot
+```
+
+Gửi:
+
+```text
+ping
+```
+
+Chi tiết hơn: xem `docs/multi-device-access.md`.
 
 ### Jira
 - `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_API_TOKEN`

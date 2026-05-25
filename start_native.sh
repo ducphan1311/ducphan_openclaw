@@ -37,40 +37,7 @@ if command -v curl >/dev/null 2>&1; then
     elif curl -s -f "${VAULT_ADDR}/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204" >/dev/null 2>&1; then
         echo "Fetching secrets from Vault..."
         SECRETS_JSON="$(curl -sS -L -H "X-Vault-Token: $VAULT_TOKEN_FOR_FETCH" "${VAULT_ADDR}/v1/openclaw_secrets/data/api_keys")"
-        if EXPORTS="$(SECRETS_JSON="$SECRETS_JSON" node -e "
-          try {
-            const raw = process.env.SECRETS_JSON;
-            if (!raw) throw new Error('SECRETS_JSON is empty');
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
-              throw new Error(parsed.errors.join('; '));
-            }
-            const secrets = parsed.data?.data ?? parsed.data;
-            if (!secrets || typeof secrets !== 'object') throw new Error('unexpected Vault response shape');
-            const emit = (key, value) => {
-              if (value === null || value === undefined || value === '') return;
-              const aliases = {
-                '9ROUTER_API_KEY': 'NINE_ROUTER_API_KEY',
-                '9ROUTER_BASE_URL': 'NINE_ROUTER_BASE_URL',
-                '9ROUTER_MODEL': 'NINE_ROUTER_MODEL',
-              };
-              key = aliases[key] || key;
-              if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) return;
-              const safeValue = String(value).replace(/'/g, \"'\\\\''\");
-              console.log('export ' + key + '=\\'' + safeValue + '\\'');
-            };
-            for (const [key, value] of Object.entries(secrets)) {
-              emit(key, value);
-              if (key === 'GOOGLE_GENERATIVE_AI_API_KEY') {
-                emit('GOOGLE_API_KEY', value);
-                emit('GEMINI_API_KEY', value);
-              }
-            }
-          } catch (err) {
-            console.error('Failed to parse Vault secrets: ' + err.message);
-            process.exit(1);
-          }
-        ")"; then
+        if EXPORTS="$(SECRETS_JSON="$SECRETS_JSON" node "$REPO_DIR/scripts/vault_exports.js")"; then
             source <(printf "%s\n" "$EXPORTS")
             echo "Secrets successfully loaded into runtime environment."
         else
@@ -234,8 +201,8 @@ data.agents.defaults.maxConcurrent = Math.min(
 );
 data.agents.defaults.subagents ??= {};
 data.agents.defaults.subagents.maxConcurrent = Math.min(
-  Number(data.agents.defaults.subagents.maxConcurrent) || 2,
-  2
+  Number(data.agents.defaults.subagents.maxConcurrent) || 4,
+  4
 );
 data.auth ??= {};
 data.auth.cooldowns ??= {};

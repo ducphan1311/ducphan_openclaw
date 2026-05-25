@@ -67,31 +67,38 @@ function normalizeConfig(configPath) {
   data.browser ??= {};
   data.browser.enabled = true;
   data.browser.headless = false;
-  data.browser.defaultProfile = "facebook-travel";
+  data.browser.defaultProfile = "research-default";
   data.browser.profiles ??= {};
-  const profileName = "facebook-travel";
-  const usedCdpPorts = new Set(
-    Object.entries(data.browser.profiles)
-      .filter(([name]) => name !== profileName)
-      .map(([, profile]) => Number(profile?.cdpPort))
-      .filter((port) => Number.isInteger(port) && port > 0)
-  );
-  const currentProfile = data.browser.profiles[profileName] || {};
-  let cdpPort =
-    Number.isInteger(Number(currentProfile.cdpPort)) &&
-    Number(currentProfile.cdpPort) > 0
-      ? Number(currentProfile.cdpPort)
-      : 18821;
-  while (usedCdpPorts.has(cdpPort)) {
-    cdpPort += 1;
-  }
-  data.browser.profiles[profileName] = {
-    ...currentProfile,
-    driver: "openclaw",
-    cdpPort,
-    color: currentProfile.color || "#3B82F6",
-    headless: false,
+  const browserProfiles = {
+    "facebook-travel": { cdpPort: 18821, color: "#3B82F6" },
+    "research-default": { cdpPort: 18822, color: "#10B981" },
+    "job-search": { cdpPort: 18823, color: "#F59E0B" },
+    "shopping-default": { cdpPort: 18824, color: "#EC4899" },
   };
+  for (const [profileName, defaults] of Object.entries(browserProfiles)) {
+    const usedCdpPorts = new Set(
+      Object.entries(data.browser.profiles)
+        .filter(([name]) => name !== profileName)
+        .map(([, profile]) => Number(profile?.cdpPort))
+        .filter((port) => Number.isInteger(port) && port > 0)
+    );
+    const currentProfile = data.browser.profiles[profileName] || {};
+    let cdpPort =
+      Number.isInteger(Number(currentProfile.cdpPort)) &&
+      Number(currentProfile.cdpPort) > 0
+        ? Number(currentProfile.cdpPort)
+        : defaults.cdpPort;
+    while (usedCdpPorts.has(cdpPort)) {
+      cdpPort += 1;
+    }
+    data.browser.profiles[profileName] = {
+      ...currentProfile,
+      driver: "openclaw",
+      cdpPort,
+      color: currentProfile.color || defaults.color,
+      headless: false,
+    };
+  }
   data.browser.snapshotDefaults = {
     ...(data.browser.snapshotDefaults || {}),
     mode: "efficient",
@@ -122,8 +129,8 @@ function normalizeConfig(configPath) {
   );
   data.agents.defaults.subagents ??= {};
   data.agents.defaults.subagents.maxConcurrent = Math.min(
-    Number(data.agents.defaults.subagents.maxConcurrent) || 2,
-    2
+    Number(data.agents.defaults.subagents.maxConcurrent) || 4,
+    4
   );
   data.agents.defaults.bootstrapMaxChars = Math.min(
     Number(data.agents.defaults.bootstrapMaxChars) || 8000,
