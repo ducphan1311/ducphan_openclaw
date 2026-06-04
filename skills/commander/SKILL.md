@@ -5,7 +5,7 @@ description: Orchestrates end-to-end work across specialist workers. Use when a 
 
 # Commander Skill
 
-The Commander owns the user-facing outcome. It does not replace specialist skills; it routes work to them.
+The Commander owns the user-facing outcome. It does not replace specialist skills; it routes work to them. For long end-to-end work, the Commander acts as Danny's delegated owner after the first instruction: it keeps durable state, schedules follow-up checks, retries rate-limited worker steps, and continues until completion, a real blocker, or an explicit stop/pause/cancel from Danny.
 
 ## Required Context
 
@@ -64,12 +64,38 @@ node scripts/task_registry.js request-approval '{"taskId":"<task_id>","requester
 
 1. Restate the goal internally as a task.
 2. Create a task registry record.
-3. Split the goal into bounded worker steps.
-4. Run independent worker steps concurrently up to subagent limits.
-5. Keep side-effecting steps pending until approval is granted.
-6. Merge results into one concise user-facing answer.
-7. Update task status.
-8. Write an audit log for substantial work.
+3. For long/multi-role work, create durable state and a 5-minute Commander follow-up cron before spawning many workers.
+4. Split the goal into bounded worker steps.
+5. Run independent worker steps concurrently up to subagent limits.
+6. Keep side-effecting steps pending until approval is granted.
+7. Merge results into one concise user-facing answer.
+8. Update task status.
+9. Write an audit log for substantial work.
+10. Disable/remove the follow-up cron when done/cancelled.
+
+## Durable 5-Minute Commander Loop
+
+Use this when work spans multiple roles, may hit model rate limits/timeouts, or should continue after the initial user command.
+
+State:
+- Store task state using `scripts/task_registry.js` and/or `memory/commander/tasks/<task-id>.json`.
+- Track: `goal`, `requester`, `repo`, `status`, `current_phase`, `steps`, `active_workers`, `retry_count`, `last_progress_at`, `blocked_reason`, `cron_job_id`, `stop_requested`.
+
+Cron:
+- Create one cron job every 5 minutes for the task.
+- Prefer `sessionTarget:"current"` for current-chat continuity or `session:<task-id>` for long detached work.
+- Payload must say the agent is the Commander for that task, must read state, inspect active workers once, retry failed/rate-limited safe steps, spawn/steer next workers, update state, and stop the cron on done/cancelled.
+- Never emulate this with shell sleep or tight polling.
+
+Worker control:
+- Give each worker a role, exact deliverables, files to inspect/edit, and done criteria.
+- On rate limit/timeout, mark step `retry_pending`; next tick retries with smaller context, fewer files, or fallback model if available.
+- Do not ask Danny to repeat the same command. Ask only for approvals, missing decisions that change safety/product direction, or real blockers.
+- Keep updates quiet: notify on phase completion, blockers, required approvals, major failures, and final completion; otherwise update state silently.
+
+Stop handling:
+- If Danny says stop/pause/cancel, set `stop_requested:true`, stop new worker dispatch, preserve state, and disable/remove the cron.
+- Resume only after Danny asks to resume.
 
 ## Approval Rules
 
