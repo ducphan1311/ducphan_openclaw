@@ -2688,6 +2688,47 @@ This detailed process ensures you correctly interpret the reaction data, prepare
 );
 
 
+// Set Reaction Tool
+server.tool(
+  "set_reaction",
+  "Set raw Figma prototype reactions on a node. Advanced: pass Figma Plugin API reaction objects.",
+  {
+    nodeId: z.string().describe("Node ID that supports prototype reactions"),
+    reactions: z.array(z.any()).describe("Array of Figma Reaction objects")
+  },
+  async (params: any) => {
+    try {
+      const result = await sendCommandToFigma("set_reaction", params);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    } catch (error) {
+      return { content: [{ type: "text", text: `Error setting reaction: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
+// Create Prototype Link Tool
+server.tool(
+  "create_prototype_link",
+  "Create a simple clickable prototype link from a source node to a destination node",
+  {
+    sourceNodeId: z.string().describe("Source/hotspot node ID"),
+    destinationId: z.string().optional().describe("Destination frame/node ID. Omit for BACK/CLOSE actions."),
+    trigger: z.enum(["ON_CLICK", "ON_HOVER", "ON_PRESS", "ON_DRAG", "AFTER_TIMEOUT", "MOUSE_ENTER", "MOUSE_LEAVE"]).optional().describe("Prototype trigger"),
+    navigation: z.enum(["NAVIGATE", "OVERLAY", "SWAP", "SCROLL_TO", "BACK", "CLOSE"]).optional().describe("Navigation/action type"),
+    transition: z.enum(["INSTANT", "DISSOLVE", "SMART_ANIMATE", "MOVE_IN", "MOVE_OUT", "PUSH", "SLIDE_IN", "SLIDE_OUT"]).optional().describe("Transition type"),
+    preserveExisting: z.boolean().optional().describe("Append instead of replacing existing reactions"),
+    overlayRelativePosition: z.object({ x: z.number(), y: z.number() }).optional().describe("Overlay relative position for OVERLAY navigation")
+  },
+  async (params: any) => {
+    try {
+      const result = await sendCommandToFigma("create_prototype_link", params);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    } catch (error) {
+      return { content: [{ type: "text", text: `Error creating prototype link: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
 // Define command types and parameters
 type FigmaCommand =
   | "get_document_info"
@@ -2732,6 +2773,8 @@ type FigmaCommand =
   | "get_reactions"
   | "set_default_connector"
   | "create_connections"
+  | "set_reaction"
+  | "create_prototype_link"
   | "set_focus"
   | "set_selections";
 
@@ -2880,6 +2923,8 @@ type CommandParams = {
       text?: string;
     }>;
   };
+  set_reaction: { nodeId: string; reactions: any[] };
+  create_prototype_link: { sourceNodeId: string; destinationId?: string; trigger?: string; navigation?: string; transition?: string; preserveExisting?: boolean; overlayRelativePosition?: { x: number; y: number } };
   set_focus: {
     nodeId: string;
   };

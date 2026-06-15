@@ -82,10 +82,11 @@ figma.ui.onmessage = async (msg) => {
           result,
         });
       } catch (error) {
+        const errorMessage = error && error.message ? error.message : (typeof error === "string" ? error : JSON.stringify(error));
         figma.ui.postMessage({
           type: "command-error",
           id: msg.id,
-          error: error.message || "Error executing command",
+          error: errorMessage || "Error executing command",
         });
       }
       break;
@@ -1795,7 +1796,7 @@ const setCharactersWithSmartMatchFont = async (
 
 // Add the cloneNode function implementation
 async function cloneNode(params) {
-  const { nodeId, x, y } = params || {};
+  const { nodeId, x, y, parentNodeId } = params || {};
 
   if (!nodeId) {
     throw new Error("Missing nodeId parameter");
@@ -1818,8 +1819,16 @@ async function cloneNode(params) {
     clone.y = y;
   }
 
-  // Add the clone to the same parent as the original node
-  if (node.parent) {
+  // Add the clone to requested parent, current page, or same parent as original.
+  if (parentNodeId === "currentPage" || parentNodeId === "page") {
+    figma.currentPage.appendChild(clone);
+  } else if (parentNodeId) {
+    const parentNode = await figma.getNodeByIdAsync(parentNodeId);
+    if (!parentNode || typeof parentNode.appendChild !== "function") {
+      throw new Error(`Parent node not found or cannot contain children: ${parentNodeId}`);
+    }
+    parentNode.appendChild(clone);
+  } else if (node.parent) {
     node.parent.appendChild(clone);
   } else {
     figma.currentPage.appendChild(clone);
@@ -4155,10 +4164,15 @@ async function createPrototypeLink(params) {
   if (!("reactions" in source)) throw new Error(`Source node does not support prototype reactions: ${sourceNodeId}`);
   const reaction = {
     trigger: { type: trigger },
-    action: buildPrototypeAction({ destinationId, navigation, transition, overlayRelativePosition })
+    actions: [buildPrototypeAction({ destinationId, navigation, transition, overlayRelativePosition })]
   };
-  source.reactions = preserveExisting ? [...(source.reactions || []), reaction] : [reaction];
-  return { id: source.id, name: source.name, type: source.type, reactions: source.reactions };
+  const nextReactions = preserveExisting ? [...(source.reactions || []), reaction] : [reaction];
+  if (typeof source.setReactionsAsync === "function") {
+    await source.setReactionsAsync(nextReactions);
+  } else {
+    source.reactions = nextReactions;
+  }
+  return { id: source.id, name: source.name, type: source.type, reactions: nextReactions };
 }
 
 async function setFocus(params) {

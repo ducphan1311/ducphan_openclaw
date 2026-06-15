@@ -6,7 +6,8 @@
 set -e
 
 # 1. Define paths based on current repository
-export REPO_DIR="$(pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export REPO_DIR="$SCRIPT_DIR"
 export OPENCLAW_WORKSPACE="$REPO_DIR/workspace"
 export OPENCLAW_SKILLS_DIR="$REPO_DIR/skills"
 export OPENCLAW_CONFIG_DIR="$REPO_DIR/config"
@@ -54,10 +55,6 @@ fi
 if [ -n "${GOOGLE_GENERATIVE_AI_API_KEY:-}" ]; then
     export GOOGLE_API_KEY="${GOOGLE_API_KEY:-$GOOGLE_GENERATIVE_AI_API_KEY}"
     export GEMINI_API_KEY="${GEMINI_API_KEY:-$GOOGLE_GENERATIVE_AI_API_KEY}"
-fi
-
-if [ -z "${GOOGLE_API_KEY:-}" ] && [ -z "${GEMINI_API_KEY:-}" ]; then
-    echo "Warning: Gemini API key is not loaded. Set VAULT_TOKEN or GOOGLE_GENERATIVE_AI_API_KEY before starting."
 fi
 
 export OPENCLAW_ENV=production
@@ -272,6 +269,11 @@ if (allowedUsers.length > 0) {
 fs.writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
 console.log(`nine_router_provider_configured=${Boolean(resolvedNineRouterKey)}`);
 console.log(`openclaw_default_model=${data.agents?.defaults?.model?.primary || ""}`);
+if (!googleKey && !resolvedNineRouterKey) {
+  console.log("Warning: no Gemini or 9Router API key is loaded. Set VAULT_TOKEN or a provider API key before starting.");
+} else if (!googleKey && resolvedNineRouterKey) {
+  console.log("gemini_key_configured=false_using_9router=true");
+}
 NODE
 
 # 4. Start the gateway
@@ -280,12 +282,48 @@ echo "Workspace: $OPENCLAW_WORKSPACE"
 echo "Policies: $OPENCLAW_CONFIG"
 echo "State: $OPENCLAW_DATA_DIR"
 
+LAUNCHD_LABEL="ai.openclaw.gateway"
+LAUNCHD_PLIST="$HOME/Library/LaunchAgents/${LAUNCHD_LABEL}.plist"
+LAUNCHD_DOMAIN="gui/$(id -u)"
+
 if command -v lsof >/dev/null 2>&1; then
     LISTENER_PIDS="$(lsof -tiTCP:18789 -sTCP:LISTEN 2>/dev/null || true)"
     if [ -n "$LISTENER_PIDS" ]; then
+        if [ -f "$LAUNCHD_PLIST" ] && launchctl print "$LAUNCHD_DOMAIN/$LAUNCHD_LABEL" >/dev/null 2>&1; then
+            echo "OpenClaw is already running under launchd on port 18789."
+            echo "LaunchAgent: $LAUNCHD_PLIST"
+            echo "PID(s): $LISTENER_PIDS"
+            echo "Log: $HOME/.openclaw/logs/gateway.log"
+            if [ "${OPENCLAW_SKIP_LAUNCHD_KICKSTART:-0}" = "1" ]; then
+                echo "Skipping launchd restart because OPENCLAW_SKIP_LAUNCHD_KICKSTART=1."
+            else
+                echo "Config/secrets have been refreshed; restarting the launchd service..."
+                launchctl kickstart -k "$LAUNCHD_DOMAIN/$LAUNCHD_LABEL"
+                echo "Restart requested; waiting for gateway to listen on port 18789..."
+                ATTEMPT=0
+                while [ "$ATTEMPT" -lt 30 ]; do
+                    NEW_LISTENER_PIDS="$(lsof -tiTCP:18789 -sTCP:LISTEN 2>/dev/null || true)"
+                    if [ -n "$NEW_LISTENER_PIDS" ] && [ "$NEW_LISTENER_PIDS" != "$LISTENER_PIDS" ]; then
+                        echo "OpenClaw launchd service is listening on port 18789 with PID(s): $NEW_LISTENER_PIDS"
+                        if tail -40 "$HOME/.openclaw/logs/gateway.log" 2>/dev/null | grep -q "\\[gateway\\] ready"; then
+                            echo "Latest gateway log shows ready."
+                        fi
+                        break
+                    fi
+                    ATTEMPT=$((ATTEMPT + 1))
+                    sleep 1
+                done
+                if [ "$ATTEMPT" -ge 30 ]; then
+                    echo "Restart requested, but readiness was not observed within 30s."
+                    echo "Check readiness with: tail -80 $HOME/.openclaw/logs/gateway.log"
+                fi
+            fi
+            exit 0
+        fi
         echo "Port 18789 is already in use by PID(s): $LISTENER_PIDS"
-        echo "If this is an existing OpenClaw gateway, leave this terminal closed and keep using Telegram."
-        echo "To restart cleanly, run: kill $LISTENER_PIDS && sleep 3 && ./start_native.sh"
+        echo "If this is an existing OpenClaw gateway, leave it running and keep using Telegram."
+        echo "Check the owner with: lsof -nP -iTCP:18789 -sTCP:LISTEN"
+        echo "Stop or restart that service before starting a second gateway."
         exit 0
     fi
 fi

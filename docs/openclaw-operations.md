@@ -16,36 +16,31 @@ Browser control sidecar thường chạy trên:
 127.0.0.1:18791
 ```
 
-## Start Gateway Bằng Screen
+## Gateway Qua Launchd
 
-Cách khuyến nghị trên máy hiện tại là chạy qua detached `screen` để tiến trình không chết khi terminal đóng:
-
-```bash
-screen -dmS openclaw-gateway bash -lc './start_native.sh > openclaw_data/native.log 2>&1'
-```
-
-Kiểm tra screen:
-
-```bash
-screen -ls
-```
-
-Attach vào session nếu cần xem trực tiếp:
-
-```bash
-screen -r openclaw-gateway
-```
-
-Thoát khỏi screen mà không tắt gateway:
+Máy hiện tại đang chạy gateway bằng user LaunchAgent:
 
 ```text
-Ctrl-A rồi D
+~/Library/LaunchAgents/ai.openclaw.gateway.plist
 ```
 
-Tắt gateway:
+Kiểm tra service:
 
 ```bash
-screen -S openclaw-gateway -X quit
+launchctl print gui/$(id -u)/ai.openclaw.gateway
+lsof -nP -iTCP:18789 -sTCP:LISTEN
+```
+
+Restart service:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway
+```
+
+Tắt service:
+
+```bash
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/ai.openclaw.gateway.plist
 ```
 
 ## Kiểm Tra Gateway
@@ -59,7 +54,7 @@ lsof -nP -iTCP:18789 -sTCP:LISTEN
 Xem log:
 
 ```bash
-tail -80 openclaw_data/native.log
+tail -80 ~/.openclaw/logs/gateway.log
 ```
 
 Log gateway chi tiết:
@@ -83,12 +78,10 @@ Sau khi sửa các file sau, nên restart gateway:
 Lệnh restart:
 
 ```bash
-screen -S openclaw-gateway -X quit
-sleep 2
-screen -dmS openclaw-gateway bash -lc './start_native.sh > openclaw_data/native.log 2>&1'
-sleep 8
+launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway
+sleep 5
 lsof -nP -iTCP:18789 -sTCP:LISTEN
-tail -80 openclaw_data/native.log
+tail -80 ~/.openclaw/logs/gateway.log
 ```
 
 ## Lỗi Thường Gặp
@@ -139,4 +132,3 @@ openclaw_default_model=9router/oc1
 ```
 
 Nếu `nine_router_provider_configured=true` và gateway ready, cảnh báo Gemini không nhất thiết là blocker.
-

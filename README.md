@@ -23,7 +23,7 @@ Telegram ──► OpenClaw Gateway (port 18789)
 - **Gateway**: OpenClaw chạy trên port `18789`, expose ra `3000` (Docker) hoặc `18789` (native).
 - **9Router**: Local OpenAI-compatible LLM router (`http://127.0.0.1:20128/v1`), quản lý model routing và fallback.
 - **Vault**: HashiCorp Vault lưu toàn bộ secrets, không commit vào git.
-- **Skills**: Các agent chuyên biệt, mỗi skill là một thư mục trong `skills/`.
+- **Skills**: Các agent chuyên biệt, mỗi skill là một thư mục trong `skills/` chứa `SKILL.md`.
 
 ---
 
@@ -45,25 +45,37 @@ Cả hai chế độ đều cần:
 
 ```
 openclaw_manager/
-├── skills/                    # Các agent skill
-│   ├── commander/             # Điều phối Commander → worker agents
+├── skills/                    # Các agent skill (26 skills)
+│   ├── ai-quota-check/        # Unified AI quota monitor & model recommender
+│   ├── antigravity-control/   # Hand off projects/files to Google Antigravity
 │   ├── browser_automation/    # Browser automation, screenshot, web research
 │   ├── codebase_intelligence/ # Repo map, code navigation (Atris-style)
+│   ├── commander/             # Điều phối Commander → worker agents
 │   ├── communication/         # Telegram, Messenger, Zalo, Gmail
+│   ├── cv_job_hunter/         # CV management & job hunting automation
 │   ├── data-qa-knowledge-curator/ # Crawl & digest Data QA knowledge hàng ngày
 │   ├── devops/                # CI/CD, Azure DevOps, Git workflow
 │   ├── document_analysis/     # PDF/image extraction, OCR-style
+│   ├── document_visual_summarizer/ # Summarize long docs with screenshots
 │   ├── email_assistant/       # Gmail triage, draft, send
 │   ├── english_learning_planner/ # Kế hoạch học tiếng Anh
+│   ├── figma_product_design/  # Figma UI design, review, design-to-code
 │   ├── google_workspace/      # Gmail, Drive, Sheets, Calendar
+│   ├── hanoi-date-spot-finder/ # Date/hangout spot recommendations in Hanoi
+│   ├── linkedin/              # LinkedIn automation via browser relay
 │   ├── memory/                # Local memory, không lưu secret
+│   ├── mobile_app_factory/    # Build mobile apps end-to-end (8 workers)
 │   ├── planner/               # Daily/weekly planning
+│   ├── product-finder/        # Product search & comparison across marketplaces
 │   ├── research/              # Web search, browser automation
 │   ├── shopping_research/     # Săn sale, so sánh giá
 │   ├── task_manager/          # Jira integration
-│   ├── travel_flights/        # Tìm chuyến bay (Amadeus)
+│   ├── travel_flights/        # Tìm chuyến bay, khách sạn (Amadeus)
 │   └── trolymail/             # Invoice/billing email workflows
 ├── scripts/
+│   ├── add_skill.sh           # Script hỗ trợ thêm skill mới
+│   ├── validate_skill.sh      # Kiểm tra skill trước khi chạy
+│   ├── list_skills.sh         # Liệt kê tất cả skill hiện tại
 │   ├── task_registry.js       # Task registry + approval broker JSONL/state
 │   ├── sync_9router_from_vault.js   # Sync 9Router config từ Vault
 │   ├── sync_gmail_from_vault.js     # Sync Gmail secrets từ Vault
@@ -80,13 +92,17 @@ openclaw_manager/
 ├── data/
 │   ├── tasks/                 # Local task registry state/events
 │   └── approvals/             # Approval broker state/events
+├── tools/
+│   └── figma-mcp/             # Figma MCP tool integration
 ├── vault/
 │   └── config/vault.json      # Vault server config
 ├── atris/MAP.md               # Codebase navigation map
-├── docs/skill-security-review.md
-├── docs/multi-agent-orchestration.md
-├── docs/multi-device-access.md
-├── docs/openclaw-operations.md
+├── docs/
+│   ├── skill-integration-guide.md   # Hướng dẫn tích hợp skill mới
+│   ├── skill-security-review.md
+│   ├── multi-agent-orchestration.md
+│   ├── multi-device-access.md
+│   └── openclaw-operations.md
 ├── docker-compose.yml
 ├── Dockerfile
 ├── entrypoint.sh              # Docker: fetch Vault secrets → start gateway
@@ -154,6 +170,12 @@ Nếu muốn gateway chạy nền ổn định sau khi đóng terminal, dùng `s
 ```bash
 screen -dmS openclaw-gateway bash -lc './start_native.sh > openclaw_data/native.log 2>&1'
 screen -ls
+```
+
+Nếu gateway đã được cài bằng launchd, `./start_native.sh` sẽ refresh config/secrets, tự restart service, rồi chờ port `18789` có PID mới. Nếu cần kiểm tra thêm:
+
+```bash
+tail -80 ~/.openclaw/logs/gateway.log
 ```
 
 Restart:
@@ -286,27 +308,215 @@ Các file chính:
 
 Các file runtime trong `data/tasks/*.json`, `data/tasks/*.jsonl`, `data/approvals/*.json`, `data/approvals/*.jsonl` đã được `.gitignore`.
 
+### Danh sách Skills (26 skills)
+
 | Skill | Mô tả |
 |-------|-------|
-| `commander` | Điều phối end-to-end qua worker agents, task registry, approval broker |
+| `ai-quota-check` | Unified AI quota monitor, model recommender cho nhiều provider |
+| `antigravity-control` | Hand off projects/files sang Google Antigravity IDE |
 | `browser_automation` | Browser automation, screenshot, public web research |
 | `codebase_intelligence` | Repo map (Atris-style), code navigation |
+| `commander` | Điều phối end-to-end qua worker agents, task registry, approval broker |
 | `communication` | Telegram, Messenger, Zalo, Gmail đa kênh |
+| `cv_job_hunter` | CV management, job hunting, interview prep automation |
 | `data-qa-knowledge-curator` | Crawl Reddit/GitHub/Twitter/SO, digest Data QA hàng ngày |
 | `devops` | CI/CD, Azure DevOps, Git workflow, build failure analysis |
 | `document_analysis` | PDF/image extraction, OCR-style, structured summaries |
+| `document_visual_summarizer` | Summarize long docs/websites kèm screenshots |
 | `email_assistant` | Gmail triage, draft, send với approval |
 | `english_learning_planner` | Kế hoạch học tiếng Anh cá nhân |
+| `figma_product_design` | Figma UI design, review, accessibility, design-to-code |
 | `google_workspace` | Gmail, Drive, Sheets, Calendar |
+| `hanoi-date-spot-finder` | Tìm địa điểm hẹn hò/hangout ở Hà Nội |
+| `linkedin` | LinkedIn automation qua browser relay/cookies |
 | `memory` | Local memory, không lưu secret |
+| `mobile_app_factory` | Build mobile apps end-to-end (1 commander + 8 workers) |
 | `planner` | Daily/weekly planning, end-of-day summary |
+| `product-finder` | Product search & comparison across marketplaces (VN & global) |
 | `research` | Web search, browser automation, source-backed research |
 | `shopping_research` | Săn sale, so sánh giá (Amazon/BrowserAct/Apify) |
 | `task_manager` | Jira: track, update, transition, assign |
-| `travel_flights` | Tìm và so sánh chuyến bay (Amadeus) |
+| `travel_flights` | Tìm và so sánh chuyến bay, khách sạn (Amadeus + OTAs) |
 | `trolymail` | Invoice/billing email, attachment download, Drive filing |
 
 > Sau khi thêm hoặc sửa skill, restart gateway để OpenClaw nạp lại.
+
+---
+
+## Tích hợp Skill mới
+
+Hướng dẫn chi tiết cách thêm một skill bên ngoài vào OpenClaw Manager.
+
+### Cách OpenClaw nạp skill
+
+OpenClaw scan thư mục `skills/` tìm các folder chứa file `SKILL.md`. File này dùng YAML frontmatter để khai báo metadata:
+
+```yaml
+---
+name: tên-skill
+description: Mô tả ngắn gọn khi nào nên dùng skill này.
+tools:
+  - tool_name_1
+  - tool_name_2
+---
+```
+
+Phần body Markdown phía dưới frontmatter là instruction cho agent.
+
+### Ví dụ: Tích hợp taste-skill từ GitHub
+
+[taste-skill](https://github.com/Leonxlnx/taste-skill) là một bộ "anti-slop" frontend agent skill giúp AI tạo UI đẹp hơn thay vì generic boilerplate.
+
+#### Bước 1: Clone skill vào thư mục skills
+
+```bash
+# Dùng script hỗ trợ (khuyến nghị)
+./scripts/add_skill.sh https://github.com/Leonxlnx/taste-skill taste-skill
+
+# Hoặc clone thủ công
+cd skills/
+git clone https://github.com/Leonxlnx/taste-skill taste-skill
+cd ..
+```
+
+#### Bước 2: Kiểm tra cấu trúc skill
+
+Mỗi skill hợp lệ phải có ít nhất `SKILL.md` với YAML frontmatter:
+
+```bash
+# Dùng script validate
+./scripts/validate_skill.sh taste-skill
+
+# Hoặc kiểm tra thủ công
+cat skills/taste-skill/skills/taste-skill/SKILL.md | head -10
+```
+
+Nếu skill từ GitHub có cấu trúc nested (`skills/<name>/SKILL.md` bên trong repo), cần symlink hoặc copy file `SKILL.md` ra đúng vị trí:
+
+```bash
+# Nếu repo có cấu trúc: taste-skill/skills/taste-skill/SKILL.md
+# Thì cần tạo SKILL.md ở gốc folder skill
+cp skills/taste-skill/skills/taste-skill/SKILL.md skills/taste-skill/SKILL.md
+```
+
+#### Bước 3: Thêm network domains vào whitelist (nếu cần)
+
+Nếu skill cần gọi API bên ngoài, thêm domain vào `config/policies.yaml`:
+
+```yaml
+security:
+  network:
+    allowlist_domains:
+      # ... existing domains ...
+      - "tasteskill.dev"         # Nếu skill cần gọi API
+      - "*.tasteskill.dev"
+```
+
+> Với `taste-skill` cụ thể thì không cần bước này vì nó chỉ tạo code instructions, không gọi external API.
+
+#### Bước 4: Thêm env vars (nếu skill cần API keys)
+
+Nếu skill cần API key riêng:
+
+1. Thêm vào `.env`:
+
+```dotenv
+TASTE_SKILL_API_KEY=your_api_key_here
+```
+
+2. Thêm vào Vault (nếu dùng Vault):
+
+```bash
+docker exec -it openclaw_vault vault kv patch openclaw_secrets/api_keys \
+  TASTE_SKILL_API_KEY="your_api_key_here"
+```
+
+3. Thêm key vào danh sách env forwarding trong `start_native.sh` (block `for (const key of [...])`):
+
+```javascript
+// Trong start_native.sh, node heredoc, thêm vào mảng env vars:
+"TASTE_SKILL_API_KEY",
+```
+
+> Với `taste-skill` cụ thể thì không cần bước này vì nó chỉ là prompt instructions.
+
+#### Bước 5: Đăng ký worker mới (nếu cần orchestration)
+
+Nếu skill mới cần được Commander điều phối:
+
+1. Tạo worker role definition tại `agents/workers/<skill-name>-worker.md`:
+
+```markdown
+# Taste Worker
+
+You are the Taste Worker. Your job is to apply design-taste-frontend
+guidelines to UI code before it ships.
+
+## When to invoke
+- User asks for UI polish, anti-slop, or "make it look good"
+- Commander routes a frontend design task
+
+## Deliverables
+- Refactored UI code with taste-skill guidelines applied
+- Before/after diff summary
+```
+
+2. Cập nhật `skills/commander/SKILL.md`, thêm vào section Routing:
+
+```markdown
+- Frontend polish, anti-slop UI, design taste: `taste-worker`
+```
+
+3. Thêm worker vào Required Context:
+
+```markdown
+- `agents/workers/taste-worker.md`
+```
+
+#### Bước 6: Validate và restart
+
+```bash
+# Validate skill
+./scripts/validate_skill.sh taste-skill
+
+# Liệt kê tất cả skills để confirm
+./scripts/list_skills.sh
+
+# Restart gateway
+screen -S openclaw-gateway -X quit
+sleep 2
+screen -dmS openclaw-gateway bash -lc './start_native.sh > openclaw_data/native.log 2>&1'
+```
+
+#### Bước 7: Test skill
+
+Nhắn bot Telegram:
+
+```text
+Áp dụng taste-skill guidelines cho trang login hiện tại
+```
+
+Hoặc nếu Commander điều phối:
+
+```text
+Polish UI cho toàn bộ frontend theo anti-slop guidelines
+```
+
+### Checklist thêm skill mới
+
+```
+□ SKILL.md có YAML frontmatter (name, description)
+□ SKILL.md body có instructions rõ ràng
+□ Folder nằm trong skills/ (đúng level, không nested quá sâu)
+□ Network domains đã whitelist (nếu cần external API)
+□ Env vars đã thêm vào .env + Vault + start_native.sh (nếu cần)
+□ Worker role file tạo trong agents/workers/ (nếu cần orchestration)
+□ Commander SKILL.md đã cập nhật routing (nếu cần)
+□ Gateway đã restart
+□ Test qua Telegram thành công
+```
+
+Xem thêm: `docs/skill-integration-guide.md` cho hướng dẫn chi tiết hơn.
 
 ---
 
@@ -396,6 +606,7 @@ Chi tiết hơn: xem `docs/multi-device-access.md`.
 ### Figma
 - `FIGMA_API_TOKEN`, `FIGMA_FILE_KEY`
 - Optional: `FIGMA_TEAM_ID`, `FIGMA_ORG_ID`
+- MCP tool integration tại `tools/figma-mcp/`
 
 ### Shopping
 - BrowserAct: `BROWSERACT_API_KEY`
@@ -430,6 +641,7 @@ Tất cả các hành động nhạy cảm đều yêu cầu xác nhận thủ c
 | Checkout / payment | ✅ |
 | Travel booking | ✅ |
 | Git push | ✅ |
+| VM execution | ✅ |
 
 Cấu hình trong `.env`:
 
@@ -447,6 +659,9 @@ Network policy chỉ cho phép các domain đã whitelist (xem `config/policies.
 
 | Script | Mục đích |
 |--------|---------|
+| `scripts/add_skill.sh` | Thêm skill mới từ GitHub repo |
+| `scripts/validate_skill.sh` | Validate cấu trúc skill trước khi chạy |
+| `scripts/list_skills.sh` | Liệt kê tất cả skill và status |
 | `start_native.sh` | Khởi động gateway native macOS |
 | `scripts/sync_9router_from_vault.js` | Sync 9Router config từ Vault |
 | `scripts/sync_gmail_from_vault.js` | Sync Gmail secrets từ Vault |
@@ -473,7 +688,9 @@ docker compose up -d --build --force-recreate openclaw
 **Port 18789 đã bị chiếm**
 
 ```bash
-kill $(lsof -tiTCP:18789 -sTCP:LISTEN) && sleep 3 && ./start_native.sh
+lsof -nP -iTCP:18789 -sTCP:LISTEN
+launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway
+tail -80 ~/.openclaw/logs/gateway.log
 ```
 
 **Browser tool lỗi trong container**
@@ -499,6 +716,24 @@ lsof -nP -iTCP:20128 -sTCP:LISTEN
 node scripts/sync_9router_from_vault.js
 ```
 
+**Skill mới không được nạp sau restart**
+
+```bash
+# Kiểm tra SKILL.md tồn tại
+./scripts/validate_skill.sh <tên-skill>
+
+# Kiểm tra symlink skills/ trong agent workspace
+ls -la openclaw_data/.openclaw/workspace/skills/
+
+# Force re-symlink
+ln -sfn "$(pwd)/skills" "$(pwd)/openclaw_data/.openclaw/workspace/skills"
+
+# Restart gateway
+screen -S openclaw-gateway -X quit
+sleep 2
+screen -dmS openclaw-gateway bash -lc './start_native.sh > openclaw_data/native.log 2>&1'
+```
+
 ---
 
 ## Bảo mật bắt buộc
@@ -514,6 +749,7 @@ node scripts/sync_9router_from_vault.js
 ## Tham khảo thêm
 
 - `atris/MAP.md` — Codebase navigation map, entry points, và file references
+- `docs/skill-integration-guide.md` — Hướng dẫn chi tiết tích hợp skill mới
 - `docs/skill-security-review.md` — Security review cho từng skill
 - `skills/data-qa-knowledge-curator/SETUP_GUIDE.md` — Hướng dẫn setup Data QA curator
 - `config/policies.yaml` — Toàn bộ security & network policy
