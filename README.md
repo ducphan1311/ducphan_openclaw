@@ -375,7 +375,13 @@ Hướng dẫn chi tiết cách thêm một skill bên ngoài vào OpenClaw Mana
 
 ### Cách OpenClaw nạp skill
 
-OpenClaw scan thư mục `skills/` tìm các folder chứa file `SKILL.md`. File này dùng YAML frontmatter để khai báo metadata:
+OpenClaw scan thư mục `skills/` và chỉ nhận các folder có cấu trúc trực tiếp:
+
+```txt
+skills/<skill-folder>/SKILL.md
+```
+
+`SKILL.md` phải có YAML frontmatter để khai báo metadata:
 
 ```yaml
 ---
@@ -387,45 +393,106 @@ tools:
 ---
 ```
 
-Phần body Markdown phía dưới frontmatter là instruction cho agent.
+Phần body Markdown phía dưới frontmatter là instruction cho agent. Khi user task khớp `description`, OpenClaw/agent sẽ đọc `SKILL.md` và làm theo.
+
+### Nguyên tắc copy từ repo bên ngoài
+
+Không phải toàn bộ repo bên ngoài đều cần nằm trong `skills/`. Với OpenClaw runtime, ưu tiên các phần sau:
+
+1. **Bắt buộc:** folder skill có `SKILL.md` ở đúng level.
+2. **Nên copy kèm:** file/folder phụ nằm cùng skill folder nếu `SKILL.md` có tham chiếu, ví dụ `DESIGN.md`, `references/`, `scripts/`, `assets/`.
+3. **Không bắt buộc runtime:** `README.md`, `CHANGELOG.md`, `.github/`, `.claude-plugin/`, examples, research notes, script build asset của upstream repo — trừ khi skill instruction cần dùng.
+4. **Nên giữ provenance/license:** nếu copy skill từ repo public, ghi rõ nguồn, commit upstream, license trong README/docs hoặc file `SOURCE.md`/`third_party/` để dễ bảo trì.
+
+Với repo chỉ chứa một skill, có thể clone/copy repo đó thành một folder dưới `skills/` nếu root repo có `SKILL.md`.
+
+Với repo chứa **nhiều skill con** như `taste-skill`, không nên clone nguyên repo vào `skills/taste-skill/` rồi để nested sâu. Hãy copy từng skill package con ra đúng level:
+
+```txt
+# Upstream repo
+repo-root/
+└── skills/
+    ├── taste-skill/SKILL.md
+    ├── taste-skill-v1/SKILL.md
+    ├── image-to-code-skill/SKILL.md
+    └── stitch-skill/
+        ├── SKILL.md
+        └── DESIGN.md
+
+# OpenClaw Manager
+openclaw_manager/
+└── skills/
+    ├── taste-skill/SKILL.md
+    ├── taste-skill-v1/SKILL.md
+    ├── image-to-code-skill/SKILL.md
+    └── stitch-skill/
+        ├── SKILL.md
+        └── DESIGN.md
+```
 
 ### Ví dụ: Tích hợp taste-skill từ GitHub
 
-[taste-skill](https://github.com/Leonxlnx/taste-skill) là một bộ "anti-slop" frontend agent skill giúp AI tạo UI đẹp hơn thay vì generic boilerplate.
+[taste-skill](https://github.com/Leonxlnx/taste-skill) là một bộ "anti-slop" frontend/design agent skill giúp AI tạo UI đẹp hơn thay vì generic boilerplate.
 
-#### Bước 1: Clone skill vào thư mục skills
+#### Bước 1: Clone upstream vào thư mục tạm/vendor
 
 ```bash
-# Dùng script hỗ trợ (khuyến nghị)
-./scripts/add_skill.sh https://github.com/Leonxlnx/taste-skill taste-skill
-
-# Hoặc clone thủ công
-cd skills/
-git clone https://github.com/Leonxlnx/taste-skill taste-skill
-cd ..
+rm -rf /tmp/taste-skill
+git clone --depth 1 https://github.com/Leonxlnx/taste-skill /tmp/taste-skill
 ```
 
-#### Bước 2: Kiểm tra cấu trúc skill
+Nếu muốn bảo trì lâu dài và dễ update, có thể dùng `vendor/taste-skill/` thay vì `/tmp`.
 
-Mỗi skill hợp lệ phải có ít nhất `SKILL.md` với YAML frontmatter:
+#### Bước 2: Xác định skill packages thực tế
 
 ```bash
-# Dùng script validate
+find /tmp/taste-skill/skills -maxdepth 2 -name SKILL.md -print
+```
+
+Repo này chứa nhiều skill con trong `/tmp/taste-skill/skills/*`, ví dụ:
+
+```txt
+/tmp/taste-skill/skills/taste-skill/SKILL.md
+/tmp/taste-skill/skills/taste-skill-v1/SKILL.md
+/tmp/taste-skill/skills/gpt-tasteskill/SKILL.md
+/tmp/taste-skill/skills/image-to-code-skill/SKILL.md
+/tmp/taste-skill/skills/stitch-skill/SKILL.md
+```
+
+#### Bước 3: Copy từng skill folder con vào `openclaw_manager/skills/`
+
+```bash
+for d in /tmp/taste-skill/skills/*; do
+  [ -d "$d" ] || continue
+  name="$(basename "$d")"
+  rm -rf "skills/$name"
+  cp -R "$d" "skills/$name"
+done
+```
+
+Cách này giữ nguyên các file phụ nằm trong từng skill folder, ví dụ `skills/stitch-skill/DESIGN.md`.
+
+> Không chỉ copy riêng các file `.md` rời rạc nếu folder skill có tài nguyên phụ. Copy nguyên folder skill package sẽ an toàn hơn.
+
+#### Bước 4: Validate cấu trúc skill
+
+```bash
+./scripts/list_skills.sh
 ./scripts/validate_skill.sh taste-skill
-
-# Hoặc kiểm tra thủ công
-cat skills/taste-skill/skills/taste-skill/SKILL.md | head -10
+./scripts/validate_skill.sh image-to-code-skill
+./scripts/validate_skill.sh stitch-skill
 ```
 
-Nếu skill từ GitHub có cấu trúc nested (`skills/<name>/SKILL.md` bên trong repo), cần symlink hoặc copy file `SKILL.md` ra đúng vị trí:
+Có thể kiểm tra thủ công:
 
 ```bash
-# Nếu repo có cấu trúc: taste-skill/skills/taste-skill/SKILL.md
-# Thì cần tạo SKILL.md ở gốc folder skill
-cp skills/taste-skill/skills/taste-skill/SKILL.md skills/taste-skill/SKILL.md
+for f in skills/*/SKILL.md; do
+  echo "--- $f"
+  sed -n '1,12p' "$f"
+done
 ```
 
-#### Bước 3: Thêm network domains vào whitelist (nếu cần)
+#### Bước 5: Network domains/env vars chỉ thêm khi skill thật sự cần
 
 Nếu skill cần gọi API bên ngoài, thêm domain vào `config/policies.yaml`:
 
@@ -434,41 +501,29 @@ security:
   network:
     allowlist_domains:
       # ... existing domains ...
-      - "tasteskill.dev"         # Nếu skill cần gọi API
-      - "*.tasteskill.dev"
+      - "example.com"
+      - "*.example.com"
 ```
-
-> Với `taste-skill` cụ thể thì không cần bước này vì nó chỉ tạo code instructions, không gọi external API.
-
-#### Bước 4: Thêm env vars (nếu skill cần API keys)
 
 Nếu skill cần API key riêng:
 
-1. Thêm vào `.env`:
+1. Thêm vào `.env`.
+2. Thêm vào Vault nếu dùng Vault.
+3. Forward biến môi trường trong startup script nếu agent runtime cần đọc.
 
-```dotenv
-TASTE_SKILL_API_KEY=your_api_key_here
-```
+> Với `taste-skill` hiện tại thì không cần network whitelist/env vars vì các skill chủ yếu là prompt/instruction; không gọi external API trong runtime.
 
-2. Thêm vào Vault (nếu dùng Vault):
+#### Bước 6: Có cần cập nhật worker/Commander không?
 
-```bash
-docker exec -it openclaw_vault vault kv patch openclaw_secrets/api_keys \
-  TASTE_SKILL_API_KEY="your_api_key_here"
-```
+**Không bắt buộc.** Skill là instruction on-demand: khi metadata/description khớp task, agent có thể tự đọc `SKILL.md` sau khi gateway/session reload.
 
-3. Thêm key vào danh sách env forwarding trong `start_native.sh` (block `for (const key of [...])`):
+Chỉ cập nhật worker/Commander nếu muốn orchestration rõ ràng trong multi-agent workflow, ví dụ:
 
-```javascript
-// Trong start_native.sh, node heredoc, thêm vào mảng env vars:
-"TASTE_SKILL_API_KEY",
-```
+- Commander tự route task UI polish sang worker thiết kế/frontend.
+- `mobile_app_factory` bắt UX/UI worker áp dụng taste-skill khi tạo màn hình mobile.
+- Muốn có worker riêng như `taste-worker` hoặc `frontend-design-worker`.
 
-> Với `taste-skill` cụ thể thì không cần bước này vì nó chỉ là prompt instructions.
-
-#### Bước 5: Đăng ký worker mới (nếu cần orchestration)
-
-Nếu skill mới cần được Commander điều phối:
+Nếu cần worker chuyên trách:
 
 1. Tạo worker role definition tại `agents/workers/<skill-name>-worker.md`:
 
@@ -487,42 +542,36 @@ guidelines to UI code before it ships.
 - Before/after diff summary
 ```
 
-2. Cập nhật `skills/commander/SKILL.md`, thêm vào section Routing:
+2. Cập nhật `skills/commander/SKILL.md` routing nếu Commander cần tự chọn worker đó.
+3. Cập nhật các skill liên quan như `figma_product_design` hoặc `mobile_app_factory` nếu muốn chúng ưu tiên taste-skill/style packs.
 
-```markdown
-- Frontend polish, anti-slop UI, design taste: `taste-worker`
+Với taste-skill hiện tại, mức tích hợp đủ dùng là:
+
+```txt
+skills/<taste-skill-child>/SKILL.md exists → gateway/session reload → skill available on-demand
 ```
 
-3. Thêm worker vào Required Context:
+Worker update là bước tối ưu thêm, không phải điều kiện bắt buộc.
 
-```markdown
-- `agents/workers/taste-worker.md`
-```
-
-#### Bước 6: Validate và restart
+#### Bước 7: Restart/reload và test
 
 ```bash
-# Validate skill
-./scripts/validate_skill.sh taste-skill
-
 # Liệt kê tất cả skills để confirm
 ./scripts/list_skills.sh
 
-# Restart gateway
+# Restart gateway nếu cần nạp lại skills
 screen -S openclaw-gateway -X quit
 sleep 2
 screen -dmS openclaw-gateway bash -lc './start_native.sh > openclaw_data/native.log 2>&1'
 ```
 
-#### Bước 7: Test skill
-
-Nhắn bot Telegram:
+Test qua Telegram:
 
 ```text
 Áp dụng taste-skill guidelines cho trang login hiện tại
 ```
 
-Hoặc nếu Commander điều phối:
+Hoặc:
 
 ```text
 Polish UI cho toàn bộ frontend theo anti-slop guidelines
@@ -530,15 +579,16 @@ Polish UI cho toàn bộ frontend theo anti-slop guidelines
 
 ### Checklist thêm skill mới
 
-```
+```txt
 □ SKILL.md có YAML frontmatter (name, description)
-□ SKILL.md body có instructions rõ ràng
-□ Folder nằm trong skills/ (đúng level, không nested quá sâu)
-□ Network domains đã whitelist (nếu cần external API)
-□ Env vars đã thêm vào .env + Vault + start_native.sh (nếu cần)
-□ Worker role file tạo trong agents/workers/ (nếu cần orchestration)
-□ Commander SKILL.md đã cập nhật routing (nếu cần)
-□ Gateway đã restart
+□ Folder nằm đúng level: skills/<skill-folder>/SKILL.md
+□ Đã copy nguyên folder skill package nếu có references/scripts/assets phụ
+□ Đã tránh nested sai dạng: skills/<repo>/skills/<skill>/SKILL.md
+□ Đã ghi nguồn/upstream commit/license nếu copy từ repo public
+□ Network domains đã whitelist (chỉ nếu cần external API)
+□ Env vars đã thêm vào .env + Vault + startup forwarding (chỉ nếu cần)
+□ Worker role/Commander routing đã cập nhật (chỉ nếu cần orchestration)
+□ Gateway/session đã reload
 □ Test qua Telegram thành công
 ```
 
