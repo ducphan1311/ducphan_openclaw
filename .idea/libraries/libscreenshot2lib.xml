@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="libscreenshot2lib">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/misc/screenshot2/libscreenshot2lib.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

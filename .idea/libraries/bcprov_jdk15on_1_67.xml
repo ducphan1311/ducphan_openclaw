@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="bcprov-jdk15on-1.67">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/org/bouncycastle/bcprov-jdk15on/1.67/bcprov-jdk15on-1.67.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

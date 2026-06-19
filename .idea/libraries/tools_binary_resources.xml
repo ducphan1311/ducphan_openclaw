@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="tools.binary-resources">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/apkparser/tools.binary-resources.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

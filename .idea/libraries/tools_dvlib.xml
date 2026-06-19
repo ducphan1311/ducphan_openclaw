@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="tools.dvlib">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/device_validator/tools.dvlib.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

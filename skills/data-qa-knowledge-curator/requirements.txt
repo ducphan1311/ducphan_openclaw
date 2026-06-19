@@ -1,0 +1,19 @@
+# Data QA Knowledge Curator - Python Dependencies
+
+# Reddit API
+praw>=7.7.0
+
+# HTTP requests
+requests>=2.31.0
+
+# JSON/data handling (built-in, but listed for clarity)
+# json
+# datetime
+# pathlib
+
+# Optional: RSS feed parsing (for blog crawler)
+feedparser>=6.0.10
+
+# Optional: HTML parsing (for web scraping)
+beautifulsoup4>=4.12.0
+lxml>=4.9.0

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="tools.layoutlib-api">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/layoutlib-api/tools.layoutlib-api.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="xml-apis-1.4.01">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/xml-apis/xml-apis/1.4.01/xml-apis-1.4.01.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

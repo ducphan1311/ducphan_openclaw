@@ -8,3 +8,7 @@ node_modules/
 workspace/
 logs/
 vault/file/
+data/tasks/*.json
+data/tasks/*.jsonl
+data/approvals/*.json
+data/approvals/*.jsonl

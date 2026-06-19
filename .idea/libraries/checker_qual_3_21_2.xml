@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="checker-qual-3.21.2">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/org/checkerframework/checker-qual/3.21.2/checker-qual-3.21.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

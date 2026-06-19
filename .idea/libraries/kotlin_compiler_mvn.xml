@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="kotlin-compiler-mvn">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/lint-psi/kotlin-compiler/kotlin-compiler-mvn.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

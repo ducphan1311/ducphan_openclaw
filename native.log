@@ -1,0 +1,9 @@
+OpenClaw is not installed globally. Installing...
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+npm warn deprecated uuid@9.0.1: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+
+changed 562 packages in 20s
+
+96 packages are looking for funding
+  run `npm fund` for details
+./start_native.sh: line 56: unexpected EOF while looking for matching `"'

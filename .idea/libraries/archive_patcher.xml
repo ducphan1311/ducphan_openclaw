@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="archive-patcher">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/archive-patcher/explainer.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/archive-patcher/generator.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/archive-patcher/shared.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

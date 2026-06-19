@@ -1,0 +1,26 @@
+{
+  "enabled": true,
+  "commander": "commander",
+  "registry": {
+    "tasks": "data/tasks/state.json",
+    "approvals": "data/approvals/state.json",
+    "events": "data/tasks/tasks.jsonl"
+  },
+  "approval": {
+    "requiredFor": [
+      "send_email",
+      "mailbox_mutation",
+      "external_post",
+      "purchase",
+      "booking",
+      "deploy",
+      "destructive_change",
+      "git_push",
+      "important_note_edit"
+    ],
+    "approverRoles": [
+      "owner",
+      "admin"
+    ]
+  }
+}

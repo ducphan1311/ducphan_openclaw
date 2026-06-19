@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="jimfs-1.1">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/com/google/jimfs/jimfs/1.1/jimfs-1.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

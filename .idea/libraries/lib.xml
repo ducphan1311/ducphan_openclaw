@@ -1,0 +1,17 @@
+<component name="libraryTable">
+  <library name="lib">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/resourceshrinker-classpath.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/apkanalyzer-classpath.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/lint-classpath.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/r8.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/screenshot2-classpath.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/retrace-classpath.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/sdkmanager-classpath.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/avdmanager-classpath.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/profgen-classpath.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

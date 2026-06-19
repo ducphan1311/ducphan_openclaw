@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="protobuf-java-3.19.3">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/com/google/protobuf/protobuf-java/3.19.3/protobuf-java-3.19.3.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

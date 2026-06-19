@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="trove4j-1.0.20200330">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/org/jetbrains/intellij/deps/trove4j/1.0.20200330/trove4j-1.0.20200330.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

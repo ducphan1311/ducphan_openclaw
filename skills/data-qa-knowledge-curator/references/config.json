@@ -1,0 +1,121 @@
+{
+  "sources": {
+    "reddit": {
+      "enabled": false,
+      "note": "Disabled due to Reddit API policy changes (2024+). Use Hacker News and Dev.to instead.",
+      "subreddits": [
+        "dataengineering",
+        "dataquality",
+        "analytics",
+        "bigquery",
+        "datawarehouse",
+        "ETL",
+        "BusinessIntelligence",
+        "datascience"
+      ],
+      "time_filter": "day",
+      "limit": 25
+    },
+    "hackernews": {
+      "enabled": true,
+      "max_stories": 50,
+      "hours_back": 24
+    },
+    "devto": {
+      "enabled": true,
+      "tags": [
+        "dataengineering",
+        "dataquality",
+        "testing",
+        "sql",
+        "etl",
+        "dbt",
+        "airflow"
+      ],
+      "per_page": 30
+    },
+    "twitter": {
+      "enabled": true,
+      "hashtags": [
+        "DataQuality",
+        "DataEngineering",
+        "DataTesting",
+        "DataValidation",
+        "DataObservability"
+      ],
+      "accounts": [
+        "dbt_labs",
+        "greatexpect",
+        "ApacheAirflow"
+      ],
+      "max_results": 20
+    },
+    "github": {
+      "enabled": true,
+      "topics": [
+        "data-quality",
+        "data-validation",
+        "data-testing",
+        "great-expectations",
+        "dbt"
+      ],
+      "trending_period": "daily",
+      "limit": 10
+    },
+    "stackoverflow": {
+      "enabled": true,
+      "tags": [
+        "data-quality",
+        "data-validation",
+        "etl",
+        "data-testing",
+        "great-expectations",
+        "dbt"
+      ],
+      "limit": 10
+    },
+    "blogs": {
+      "enabled": true,
+      "feeds": [
+        "https://blog.getdbt.com/rss/",
+        "https://greatexpectations.io/blog/rss.xml",
+        "https://airflow.apache.org/blog/feed.xml"
+      ]
+    }
+  },
+  "relevance": {
+    "min_score": 50,
+    "keyword_weight": 0.4,
+    "engagement_weight": 0.3,
+    "recency_weight": 0.2,
+    "source_credibility_weight": 0.1
+  },
+  "digest": {
+    "max_items_per_category": 3,
+    "categories": [
+      "trending",
+      "best_practice",
+      "new_tool",
+      "learning_resource",
+      "common_issue",
+      "case_study"
+    ],
+    "delivery_time": "07:00",
+    "timezone": "Asia/Saigon"
+  },
+  "summarization": {
+    "enabled": true,
+    "max_length": 200,
+    "model": "gpt-4o-mini"
+  },
+  "telegram": {
+    "enabled": true,
+    "chat_id": null,
+    "parse_mode": "Markdown"
+  },
+  "storage": {
+    "knowledge_base_path": "~/.openclaw/workspace/skills/data-qa-knowledge-curator/knowledge_base.json",
+    "max_items": 1000,
+    "retention_days": 30
+  }
+}

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="jakarta.activation-api-1.2.1">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cmdline-tools_tmp/lib/external/jakarta/activation/jakarta.activation-api/1.2.1/jakarta.activation-api-1.2.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,331 @@
+#!/bin/bash
+# start_native.sh - Run OpenClaw natively on macOS
+# This script sets up the local environment to match the docker configuration
+# and starts the OpenClaw gateway.
+
+set -e
+
+# 1. Define paths based on current repository
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export REPO_DIR="$SCRIPT_DIR"
+export OPENCLAW_WORKSPACE="$REPO_DIR/workspace"
+export OPENCLAW_SKILLS_DIR="$REPO_DIR/skills"
+export OPENCLAW_CONFIG_DIR="$REPO_DIR/config"
+export OPENCLAW_DATA_DIR="$REPO_DIR/openclaw_data"
+export OPENCLAW_CONFIG_PATH="$OPENCLAW_DATA_DIR/openclaw.json"
+export OPENCLAW_AGENT_WORKSPACE="$OPENCLAW_DATA_DIR/.openclaw/workspace"
+
+if [ -f "$REPO_DIR/.env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$REPO_DIR/.env"
+    set +a
+fi
+
+# Provide fallback for local Vault (or rely on existing dockerized vault)
+export VAULT_ADDR=${VAULT_ADDR:-"http://127.0.0.1:8200"}
+# Uncomment and set your Vault Token here, or pass it in environment
+# export VAULT_TOKEN="your_vault_token"
+
+if command -v curl >/dev/null 2>&1; then
+    VAULT_TOKEN_FOR_FETCH="${VAULT_TOKEN:-}"
+    if [ -z "$VAULT_TOKEN_FOR_FETCH" ] && [ -f "$HOME/.vault-token" ]; then
+        VAULT_TOKEN_FOR_FETCH="$(cat "$HOME/.vault-token" 2>/dev/null || true)"
+    fi
+
+    if [ -z "$VAULT_TOKEN_FOR_FETCH" ]; then
+        echo "VAULT_TOKEN is not set and ~/.vault-token was not found; using existing environment/.env values."
+    elif curl -s -f "${VAULT_ADDR}/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204" >/dev/null 2>&1; then
+        echo "Fetching secrets from Vault..."
+        SECRETS_JSON="$(curl -sS -L -H "X-Vault-Token: $VAULT_TOKEN_FOR_FETCH" "${VAULT_ADDR}/v1/openclaw_secrets/data/api_keys")"
+        if EXPORTS="$(SECRETS_JSON="$SECRETS_JSON" node "$REPO_DIR/scripts/vault_exports.js")"; then
+            source <(printf "%s\n" "$EXPORTS")
+            echo "Secrets successfully loaded into runtime environment."
+        else
+            echo "Vault secret fetch failed; using existing environment/.env values."
+        fi
+        unset SECRETS_JSON
+        unset EXPORTS
+        unset VAULT_TOKEN_FOR_FETCH
+    else
+        echo "Vault is not reachable at ${VAULT_ADDR}; using existing environment/.env values."
+    fi
+fi
+
+if [ -n "${GOOGLE_GENERATIVE_AI_API_KEY:-}" ]; then
+    export GOOGLE_API_KEY="${GOOGLE_API_KEY:-$GOOGLE_GENERATIVE_AI_API_KEY}"
+    export GEMINI_API_KEY="${GEMINI_API_KEY:-$GOOGLE_GENERATIVE_AI_API_KEY}"
+fi
+
+export OPENCLAW_ENV=production
+export OPENCLAW_HOST=127.0.0.1
+export OPENCLAW_CONFIG="$OPENCLAW_CONFIG_DIR/policies.yaml"
+export OPENCLAW_AUTO_RATE_LIMIT_RETRY="${OPENCLAW_AUTO_RATE_LIMIT_RETRY:-1}"
+export OPENCLAW_AUTO_RATE_LIMIT_RETRY_MAX_WAIT_MS="${OPENCLAW_AUTO_RATE_LIMIT_RETRY_MAX_WAIT_MS:-86400000}"
+export OPENCLAW_AUTO_RATE_LIMIT_RETRY_MAX_ATTEMPTS="${OPENCLAW_AUTO_RATE_LIMIT_RETRY_MAX_ATTEMPTS:-48}"
+
+# Add global npm bin to PATH
+export PATH="$(npm get prefix)/bin:$PATH"
+
+# 2. Check dependencies
+if ! command -v node >/dev/null 2>&1; then
+    echo "Error: Node.js is not installed. Please install Node.js 22+ (e.g., via Homebrew: brew install node)"
+    exit 1
+fi
+
+if ! command -v openclaw >/dev/null 2>&1; then
+    echo "OpenClaw is not installed globally. Installing..."
+    npm install -g openclaw@latest playwright pnpm
+fi
+
+node "$REPO_DIR/patch_openclaw_rate_limit_retry.js"
+
+# 3. Create required directories if they don't exist
+mkdir -p "$OPENCLAW_WORKSPACE" "$OPENCLAW_SKILLS_DIR" "$OPENCLAW_CONFIG_DIR" "$OPENCLAW_DATA_DIR" "$OPENCLAW_AGENT_WORKSPACE"
+
+# OpenClaw loads workspace skills from the active agent workspace:
+#   <agent-workspace>/skills/<skill>/SKILL.md
+# Keep that path pointed at this repo's curated skills directory.
+if [ -e "$OPENCLAW_AGENT_WORKSPACE/skills" ] && [ ! -L "$OPENCLAW_AGENT_WORKSPACE/skills" ]; then
+    echo "Warning: $OPENCLAW_AGENT_WORKSPACE/skills exists and is not a symlink; leaving it unchanged."
+else
+    ln -sfn "$OPENCLAW_SKILLS_DIR" "$OPENCLAW_AGENT_WORKSPACE/skills"
+fi
+
+# Ensure we use the local openclaw_data folder for config instead of the user's home ~/.openclaw
+export OPENCLAW_DATA_DIR="$REPO_DIR/openclaw_data"
+# Force OpenClaw to use local directory by modifying env variable if supported
+export OPENCLAW_HOME="$OPENCLAW_DATA_DIR"
+
+node <<'NODE'
+const fs = require("fs");
+const path = process.env.OPENCLAW_CONFIG_PATH;
+const token = (process.env.TELEGRAM_BOT_TOKEN || "").trim();
+const googleKey = (
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
+  process.env.GOOGLE_API_KEY ||
+  process.env.GEMINI_API_KEY ||
+  ""
+).trim();
+const nineRouterKey = (
+  process.env.NINE_ROUTER_API_KEY ||
+  process.env.ROUTER9_API_KEY ||
+  ""
+).trim();
+const nineRouterBaseUrl = (
+  process.env.NINE_ROUTER_BASE_URL ||
+  "http://127.0.0.1:20128/v1"
+).trim();
+const nineRouterModel = (
+  process.env.NINE_ROUTER_MODEL ||
+  "oc1"
+).trim();
+const allowedUsers = (process.env.TELEGRAM_ALLOWED_USERS || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+if (!path) {
+  process.exit(0);
+}
+
+let data = {};
+if (fs.existsSync(path)) {
+  data = JSON.parse(fs.readFileSync(path, "utf8"));
+}
+
+data.channels ??= {};
+data.channels.telegram ??= {};
+data.channels.telegram.enabled = true;
+data.gateway ??= {};
+data.gateway.mode = "local";
+data.gateway.bind = "loopback";
+delete data.gateway.customBindHost;
+data.models ??= {};
+data.models.providers ??= {};
+if (data.models.providers.google && Object.keys(data.models.providers.google).length === 0) {
+  delete data.models.providers.google;
+}
+const existingNineRouterProvider = data.models.providers["9router"] || {};
+const resolvedNineRouterKey = nineRouterKey || String(existingNineRouterProvider.apiKey || "").trim();
+const resolvedNineRouterBaseUrl =
+  nineRouterBaseUrl || String(existingNineRouterProvider.baseUrl || "").trim();
+const resolvedNineRouterModel =
+  nineRouterModel ||
+  String(existingNineRouterProvider.models?.[0]?.id || "").trim() ||
+  "oc1";
+
+if (resolvedNineRouterKey) {
+  data.models.providers["9router"] = {
+    ...existingNineRouterProvider,
+    baseUrl: resolvedNineRouterBaseUrl,
+    apiKey: resolvedNineRouterKey,
+    api: "openai-completions",
+    models: [
+      {
+        id: resolvedNineRouterModel,
+        name: resolvedNineRouterModel,
+      },
+    ],
+  };
+}
+data.agents ??= {};
+data.agents.defaults ??= {};
+data.agents.defaults.workspace = process.env.OPENCLAW_AGENT_WORKSPACE;
+// Routing & fallback are owned by the 9router combo (e.g. "oc1") on the
+// 9router dashboard. Do not duplicate fallback logic here; let the combo
+// handle model rotation inside 9router.
+if (resolvedNineRouterKey) {
+  data.agents.defaults.model = {
+    primary: `9router/${resolvedNineRouterModel}`,
+    fallbacks: [],
+  };
+  data.agents.defaults.models ??= {};
+  data.agents.defaults.models[`9router/${resolvedNineRouterModel}`] ??= {};
+} else {
+  // No 9router key available; preserve any pre-existing local model setup
+  // but do not inject hardcoded fallbacks.
+  data.agents.defaults.model ??= { primary: "", fallbacks: [] };
+  data.agents.defaults.models ??= {};
+}
+data.agents.defaults.timeoutSeconds = Math.max(
+  Number(data.agents.defaults.timeoutSeconds) || 0,
+  86400
+);
+data.agents.defaults.maxConcurrent = Math.min(
+  Number(data.agents.defaults.maxConcurrent) || 1,
+  1
+);
+data.agents.defaults.subagents ??= {};
+data.agents.defaults.subagents.maxConcurrent = Math.min(
+  Number(data.agents.defaults.subagents.maxConcurrent) || 4,
+  4
+);
+data.auth ??= {};
+data.auth.cooldowns ??= {};
+data.auth.cooldowns.rateLimitedProfileRotations = 1;
+data.auth.cooldowns.overloadedProfileRotations = 1;
+data.env ??= {};
+data.env.shellEnv ??= {};
+data.env.shellEnv.enabled = true;
+data.env.vars ??= {};
+
+for (const key of [
+  "JIRA_BASE_URL",
+  "JIRA_USER_EMAIL",
+  "JIRA_API_TOKEN",
+  "FIGMA_API_TOKEN",
+  "FIGMA_FILE_KEY",
+  "FIGMA_TEAM_ID",
+  "FIGMA_ORG_ID",
+  "NINE_ROUTER_API_KEY",
+  "NINE_ROUTER_BASE_URL",
+  "NINE_ROUTER_MODEL",
+  "GMAIL_ACCOUNT",
+  "GMAIL_USER",
+  "GMAIL_APP_PASSWORD",
+  "BROWSERACT_API_KEY",
+  "APIFY_TOKEN",
+  "AMADEUS_API_KEY",
+  "AMADEUS_API_SECRET",
+  "AMADEUS_BASE_URL",
+  "AGENT_BRAIN_SUPERMEMORY_SYNC",
+  "AGENT_BRAIN_PII_MODE",
+  "AGENT_BRAIN_REMOTE_EMBEDDINGS",
+  "AUTONOMY_START_HOUR",
+  "AUTONOMY_END_HOUR",
+  "TIMEZONE",
+  "HITL_FILE_DELETION",
+  "HITL_SYSTEM_COMMANDS",
+  "HITL_EXTERNAL_API",
+  "OPENCLAW_HEARTBEAT_INTERVAL",
+  "OPENCLAW_LOCAL_ONLY",
+]) {
+  const value = (process.env[key] || "").trim();
+  if (value) data.env.vars[key] = value;
+}
+
+if (googleKey) {
+  process.env.GOOGLE_API_KEY = googleKey;
+  process.env.GEMINI_API_KEY = googleKey;
+}
+
+if (token) {
+  data.channels.telegram.botToken = token;
+}
+
+if (allowedUsers.length > 0) {
+  data.channels.telegram.dmPolicy = "allowlist";
+  data.channels.telegram.allowFrom = allowedUsers;
+  data.commands ??= {};
+  data.commands.ownerAllowFrom = [
+    ...new Set([
+      ...(Array.isArray(data.commands.ownerAllowFrom) ? data.commands.ownerAllowFrom : []),
+      ...allowedUsers.map((userId) => `telegram:${userId}`),
+    ]),
+  ];
+}
+
+fs.writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+console.log(`nine_router_provider_configured=${Boolean(resolvedNineRouterKey)}`);
+console.log(`openclaw_default_model=${data.agents?.defaults?.model?.primary || ""}`);
+if (!googleKey && !resolvedNineRouterKey) {
+  console.log("Warning: no Gemini or 9Router API key is loaded. Set VAULT_TOKEN or a provider API key before starting.");
+} else if (!googleKey && resolvedNineRouterKey) {
+  console.log("gemini_key_configured=false_using_9router=true");
+}
+NODE
+
+# 4. Start the gateway
+echo "Starting OpenClaw Native Gateway..."
+echo "Workspace: $OPENCLAW_WORKSPACE"
+echo "Policies: $OPENCLAW_CONFIG"
+echo "State: $OPENCLAW_DATA_DIR"
+
+LAUNCHD_LABEL="ai.openclaw.gateway"
+LAUNCHD_PLIST="$HOME/Library/LaunchAgents/${LAUNCHD_LABEL}.plist"
+LAUNCHD_DOMAIN="gui/$(id -u)"
+
+if command -v lsof >/dev/null 2>&1; then
+    LISTENER_PIDS="$(lsof -tiTCP:18789 -sTCP:LISTEN 2>/dev/null || true)"
+    if [ -n "$LISTENER_PIDS" ]; then
+        if [ -f "$LAUNCHD_PLIST" ] && launchctl print "$LAUNCHD_DOMAIN/$LAUNCHD_LABEL" >/dev/null 2>&1; then
+            echo "OpenClaw is already running under launchd on port 18789."
+            echo "LaunchAgent: $LAUNCHD_PLIST"
+            echo "PID(s): $LISTENER_PIDS"
+            echo "Log: $HOME/.openclaw/logs/gateway.log"
+            if [ "${OPENCLAW_SKIP_LAUNCHD_KICKSTART:-0}" = "1" ]; then
+                echo "Skipping launchd restart because OPENCLAW_SKIP_LAUNCHD_KICKSTART=1."
+            else
+                echo "Config/secrets have been refreshed; restarting the launchd service..."
+                launchctl kickstart -k "$LAUNCHD_DOMAIN/$LAUNCHD_LABEL"
+                echo "Restart requested; waiting for gateway to listen on port 18789..."
+                ATTEMPT=0
+                while [ "$ATTEMPT" -lt 30 ]; do
+                    NEW_LISTENER_PIDS="$(lsof -tiTCP:18789 -sTCP:LISTEN 2>/dev/null || true)"
+                    if [ -n "$NEW_LISTENER_PIDS" ] && [ "$NEW_LISTENER_PIDS" != "$LISTENER_PIDS" ]; then
+                        echo "OpenClaw launchd service is listening on port 18789 with PID(s): $NEW_LISTENER_PIDS"
+                        if tail -40 "$HOME/.openclaw/logs/gateway.log" 2>/dev/null | grep -q "\\[gateway\\] ready"; then
+                            echo "Latest gateway log shows ready."
+                        fi
+                        break
+                    fi
+                    ATTEMPT=$((ATTEMPT + 1))
+                    sleep 1
+                done
+                if [ "$ATTEMPT" -ge 30 ]; then
+                    echo "Restart requested, but readiness was not observed within 30s."
+                    echo "Check readiness with: tail -80 $HOME/.openclaw/logs/gateway.log"
+                fi
+            fi
+            exit 0
+        fi
+        echo "Port 18789 is already in use by PID(s): $LISTENER_PIDS"
+        echo "If this is an existing OpenClaw gateway, leave it running and keep using Telegram."
+        echo "Check the owner with: lsof -nP -iTCP:18789 -sTCP:LISTEN"
+        echo "Stop or restart that service before starting a second gateway."
+        exit 0
+    fi
+fi
+
+openclaw gateway --allow-unconfigured --port 18789
