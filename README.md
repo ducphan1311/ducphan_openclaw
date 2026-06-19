@@ -45,10 +45,12 @@ Cả hai chế độ đều cần:
 
 ```
 openclaw_manager/
-├── skills/                    # Các agent skill (26 skills)
+├── skills/                    # Các agent skill (39 skills)
 │   ├── ai-quota-check/        # Unified AI quota monitor & model recommender
 │   ├── antigravity-control/   # Hand off projects/files to Google Antigravity
+│   ├── brandkit/              # Taste-skill: premium brand-kit image generation
 │   ├── browser_automation/    # Browser automation, screenshot, web research
+│   ├── brutalist-skill/       # Taste-skill: industrial/brutalist UI direction
 │   ├── codebase_intelligence/ # Repo map, code navigation (Atris-style)
 │   ├── commander/             # Điều phối Commander → worker agents
 │   ├── communication/         # Telegram, Messenger, Zalo, Gmail
@@ -61,15 +63,26 @@ openclaw_manager/
 │   ├── english_learning_planner/ # Kế hoạch học tiếng Anh
 │   ├── figma_product_design/  # Figma UI design, review, design-to-code
 │   ├── google_workspace/      # Gmail, Drive, Sheets, Calendar
+│   ├── gpt-tasteskill/        # Taste-skill: GSAP/motion-heavy frontend design
 │   ├── hanoi-date-spot-finder/ # Date/hangout spot recommendations in Hanoi
+│   ├── image-to-code-skill/   # Taste-skill: image-first website implementation
+│   ├── imagegen-frontend-mobile/ # Taste-skill: mobile UI image generation
+│   ├── imagegen-frontend-web/ # Taste-skill: web UI image generation
 │   ├── linkedin/              # LinkedIn automation via browser relay
 │   ├── memory/                # Local memory, không lưu secret
+│   ├── minimalist-skill/      # Taste-skill: minimalist high-end UI direction
 │   ├── mobile_app_factory/    # Build mobile apps end-to-end (8 workers)
+│   ├── output-skill/          # Taste-skill: full-output enforcement
 │   ├── planner/               # Daily/weekly planning
 │   ├── product-finder/        # Product search & comparison across marketplaces
+│   ├── redesign-skill/        # Taste-skill: redesign existing projects
 │   ├── research/              # Web search, browser automation
 │   ├── shopping_research/     # Săn sale, so sánh giá
+│   ├── soft-skill/            # Taste-skill: soft/high-end visual design
+│   ├── stitch-skill/          # Taste-skill: Google Stitch DESIGN.md generation
 │   ├── task_manager/          # Jira integration
+│   ├── taste-skill/           # Taste-skill v2: design-taste-frontend
+│   ├── taste-skill-v1/        # Taste-skill v1 compatibility
 │   ├── travel_flights/        # Tìm chuyến bay, khách sạn (Amadeus)
 │   └── trolymail/             # Invoice/billing email workflows
 ├── scripts/
@@ -110,6 +123,19 @@ openclaw_manager/
 ├── patch_openclaw_rate_limit_retry.js
 └── openclaw_data/             # Runtime state (gitignored)
 ```
+
+
+### Taste Skill Frontend Design Pack
+
+Bộ skill từ [`Leonxlnx/taste-skill`](https://github.com/Leonxlnx/taste-skill) đã được tích hợp vào `skills/` để tăng chất lượng thiết kế UI/frontend:
+
+- `taste-skill/` (`design-taste-frontend`) — default v2 cho premium frontend/UI generation.
+- `taste-skill-v1/` (`design-taste-frontend-v1`) — bản v1 để tương thích hành vi cũ.
+- `gpt-tasteskill/` (`gpt-taste`) — UX/UI + GSAP motion engineering.
+- `image-to-code-skill/`, `imagegen-frontend-web/`, `imagegen-frontend-mobile/` — image-first design/code workflows.
+- Visual style packs: `brandkit/`, `redesign-skill/`, `soft-skill/`, `minimalist-skill/`, `brutalist-skill/`, `output-skill/`, `stitch-skill/`.
+
+Các skill này được load qua cơ chế skills chuẩn của OpenClaw sau khi gateway/session reload.
 
 ---
 
